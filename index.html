@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f6f2" />
+    <meta name="description" content="A quieter way to read Hacker News. Good stories, thoughtful conversations, and room to read." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>HN Reader — A little less noise.</title>
+    <script>
+      try { var t = localStorage.getItem('hn-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
