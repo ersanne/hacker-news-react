@@ -27,6 +27,38 @@ function wrapLeadingBlock(root: ParentNode) {
   paragraph.append(...leading);
 }
 
+// HN indents a code block by the two spaces that marked it as code, and keeps
+// whatever the author's editor left behind. None of it is part of the code,
+// and all of it costs column a comment does not have.
+function tidyCode(root: ParentNode) {
+  for (const block of root.querySelectorAll('pre')) {
+    const lines = (block.textContent ?? '').split('\n');
+    const indents = lines.filter(line => line.trim()).map(line => (/^[ \t]*/.exec(line) ?? [''])[0].length);
+    const indent = indents.length ? Math.min(...indents) : 0;
+    // HN links URLs inside a code block, so the block is edited through its
+    // text nodes: rewriting its text would throw those links away.
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    const texts: Text[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) texts.push(node as Text);
+    if (!texts.length) continue;
+    const margin = new RegExp(`[ \\t]{0,${indent}}`);
+    let opening = true;
+    for (const text of texts) {
+      let value = text.nodeValue ?? '';
+      if (indent) {
+        if (opening) value = value.replace(new RegExp(`^${margin.source}`), '');
+        value = value.replace(new RegExp(`\\n${margin.source}`, 'g'), '\n');
+      }
+      value = value.replace(/[ \t]+(?=\n)/g, '');
+      opening = value.endsWith('\n');
+      text.nodeValue = value;
+    }
+    texts[0].nodeValue = (texts[0].nodeValue ?? '').replace(/^\n+/, '');
+    const last = texts[texts.length - 1];
+    last.nodeValue = (last.nodeValue ?? '').replace(/\n+$/, '');
+  }
+}
+
 const QUOTE = /^(\s*>+)\s?/;
 // Deep enough for a reply quoting a reply; past that the indent costs more
 // column than the nesting explains.
@@ -260,6 +292,7 @@ export function parseComment(value: string): RichNode[] {
   const template = document.createElement('template');
   template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: COMMENT_TAGS, ALLOWED_ATTR: ['href', 'title'] });
   wrapLeadingBlock(template.content);
+  tidyCode(template.content);
   for (const paragraph of [...template.content.querySelectorAll('p')]) splitLines(paragraph);
   liftQuotes(template.content);
   liftLists(template.content);

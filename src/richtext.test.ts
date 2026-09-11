@@ -116,6 +116,15 @@ describe('comment text conventions', () => {
     expect(parse(`<p><a href="${long}">https://example.com/2026/09/a-very-long-article-slug-inde...</a></p>`))
       .toBe(`<p><a href="${long}">https://example.com/2026/09/a-very-long-article-slug-inde...</a></p>`);
   });
+  it('drops the indent HN adds to a code block, and keeps the shape within it', () => {
+    expect(parse('<pre><code>  first\n    nested\n  last</code></pre>'))
+      .toBe('<pre><code>first\n  nested\nlast</code></pre>');
+  });
+  it('trims the blank lines and trailing spaces around code without touching its links', () => {
+    expect(parse('<pre><code>\n  one   \n  two\n\n</code></pre>')).toBe('<pre><code>one\ntwo</code></pre>');
+    expect(parse('<pre><code>  see <a href="https://example.com">docs</a>\n  done</code></pre>'))
+      .toBe('<pre><code>see <a href="https://example.com">docs</a>\ndone</code></pre>');
+  });
   it('keeps whitespace between inline elements intact', () => {
     expect(parse('<p><i>foo</i> bar <b>baz</b></p>')).toBe('<p><i>foo</i> bar <b>baz</b></p>');
   });
