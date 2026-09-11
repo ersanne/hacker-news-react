@@ -129,6 +129,44 @@ function liftLists(root: ParentNode) {
   flush();
 }
 
+// Text that already stands for code, or for a destination, is not prose that
+// happens to contain a backtick.
+const LITERAL = new Set(['PRE', 'CODE', 'A']);
+
+function isLiteral(node: Node) {
+  for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+    if (LITERAL.has(parent.tagName)) return true;
+  }
+  return false;
+}
+
+// The block passes strip markers from the first text node of a paragraph, so
+// they run before this one: a code span made first could carry that marker
+// inside it, where stripping it would edit the code rather than the prose.
+function markCodeSpans(root: ParentNode) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const spans: Text[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if ((node.nodeValue ?? '').includes('`') && !isLiteral(node)) spans.push(node as Text);
+  }
+  for (const text of spans) {
+    const value = text.nodeValue ?? '';
+    const pattern = /`([^`\n]+)`/g;
+    const pieces = document.createDocumentFragment();
+    let read = 0;
+    for (let match = pattern.exec(value); match; match = pattern.exec(value)) {
+      if (match.index > read) pieces.append(value.slice(read, match.index));
+      const code = document.createElement('code');
+      code.textContent = match[1];
+      pieces.append(code);
+      read = match.index + match[0].length;
+    }
+    if (!read) continue;
+    if (read < value.length) pieces.append(value.slice(read));
+    text.replaceWith(pieces);
+  }
+}
+
 function toNode(node: Node): RichNode | null {
   if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? '';
   if (node.nodeType !== Node.ELEMENT_NODE) return null;
@@ -153,5 +191,6 @@ export function parseComment(value: string): RichNode[] {
   for (const paragraph of [...template.content.querySelectorAll('p')]) splitLines(paragraph);
   liftQuotes(template.content);
   liftLists(template.content);
+  markCodeSpans(template.content);
   return [...template.content.childNodes].flatMap(child => toNode(child) ?? []);
 }

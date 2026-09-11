@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { parseComment, type RichNode } from './richtext';
 
 // The tree renders through React, so assertions read it back as the markup it
-// stands for rather than walking nested objects.
+// stands for rather than walking nested objects. Text is escaped the way React
+// escapes it, so a string child never reads as though it were markup.
 function html(nodes: RichNode[]): string {
   return nodes.map(node => {
-    if (typeof node === 'string') return node;
+    if (typeof node === 'string') return node.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const attrs = Object.entries(node.attrs).map(([name, value]) => ` ${name}="${value}"`).join('');
     return `<${node.tag}${attrs}>${html(node.children)}</${node.tag}>`;
   }).join('');
@@ -76,6 +77,19 @@ describe('comment text conventions', () => {
   });
   it('lifts a list that was typed inside a quote', () => {
     expect(parse('<p>&gt; - one</p><p>&gt; - two</p>')).toBe('<blockquote><ul><li>one</li><li>two</li></ul></blockquote>');
+  });
+  it('marks backticked text as code, where HN offers no inline markup at all', () => {
+    expect(parse('<p>Use `npm run build` first</p>')).toBe('<p>Use <code>npm run build</code> first</p>');
+    expect(parse('<p>`a` and `b`</p>')).toBe('<p><code>a</code> and <code>b</code></p>');
+  });
+  it('leaves backticks alone where the text already stands for something', () => {
+    expect(parse('<pre><code>let x = `y`</code></pre>')).toBe('<pre><code>let x = `y`</code></pre>');
+    expect(parse('<p><a href="https://example.com/`x`">link</a></p>')).toBe('<p><a href="https://example.com/`x`">link</a></p>');
+    expect(parse('<p>an ` unmatched tick</p>')).toBe('<p>an ` unmatched tick</p>');
+    expect(parse('<p>empty `` pair</p>')).toBe('<p>empty `` pair</p>');
+  });
+  it('reads a code span as text, so markup inside one cannot escape it', () => {
+    expect(parse('<p>`&lt;b&gt;bold&lt;/b&gt;`</p>')).toBe('<p><code>&lt;b&gt;bold&lt;/b&gt;</code></p>');
   });
   it('keeps whitespace between inline elements intact', () => {
     expect(parse('<p><i>foo</i> bar <b>baz</b></p>')).toBe('<p><i>foo</i> bar <b>baz</b></p>');
