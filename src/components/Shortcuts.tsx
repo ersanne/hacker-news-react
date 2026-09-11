@@ -10,6 +10,7 @@ const keys: [string, string][] = [
   ['n / p', 'Move down and up the comments'],
   ['N / P', 'Jump to the next and previous thread'],
   ['x', 'Collapse or expand the focused comment'],
+  ['X', 'Collapse or expand every thread'],
   ['Enter', 'Show or hide the replies to the focused comment'],
   ['o', 'Open the original article in a new tab'],
   ['a', 'Open the article on archive.is'],

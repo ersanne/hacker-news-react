@@ -81,6 +81,13 @@ export function useKeyboardShortcuts({ selected, backTo, search, dialogOpen, pan
         else onFocusMode();
         return;
       }
+      if (event.key === 'X') {
+        const fold = document.querySelector<HTMLButtonElement>('.discussion-panel:not([hidden]) .collapse-all');
+        if (!fold) return;
+        event.preventDefault();
+        fold.click();
+        return;
+      }
       const comment = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.comment') ?? null;
       if (event.key === 'x' || event.key === 'Enter') {
         // Enter stays with whatever holds it — a story link, a button — unless

@@ -143,6 +143,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .discussion-label { margin-top: 28px; border-block: 1px solid var(--line); padding: 14px 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .discussion-label h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 12px; font-weight: 550; }
 .discussion-label h3 > span { font-size: 10px; font-weight: 400; background: var(--line); padding: 2px 6px; border-radius: 4px; }
+.label-controls { display: flex; align-items: center; gap: 16px; }
 .sort-control { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
 .sort-control select { background: transparent; border: 1px solid var(--line); border-radius: 5px; color: var(--text); padding: 5px 7px; font-size: 11px; cursor: pointer; }
 .sort-control option { background: var(--surface); }

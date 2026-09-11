@@ -40,11 +40,13 @@ function CommentBatch({ comments, depth = 0, parent }: { comments: Comment[]; de
 }
 
 function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
-  const { index, author } = useThread();
+  const { index, author, folded, unfolded } = useThread();
   const { autoExpand } = useViewSettings();
   const entry = index.get(comment.id);
-  const [collapsed, setCollapsed] = useState(false);
-  const [expanded, setExpanded] = useState(() => autoExpand && opensByDefault(entry));
+  // Folding hides a whole thread, so only the threads themselves fold; a
+  // comment inside one would be collapsed behind an already hidden parent.
+  const [collapsed, setCollapsed] = useState(() => depth === 0 && !!folded);
+  const [expanded, setExpanded] = useState(() => unfolded || (autoExpand && opensByDefault(entry)));
   const replies = comment.kids;
   // What a collapsed comment hides is its whole subtree, not the replies
   // directly under it, so that is the number worth reporting.
@@ -76,6 +78,7 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
   const [item, setItem] = useState<HNItem | null>(null);
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [order, setOrder] = useState<Order>('hn');
+  const [fold, setFold] = useState({ turn: 0, all: false });
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(false);
   const [commentsError, setCommentsError] = useState(false);
@@ -115,7 +118,21 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
   }, [comments, order]);
   // Built from the thread as it arrived, so re-sorting the roots does not
   // rebuild what is true of every comment regardless of order.
-  const thread = useMemo(() => ({ index: indexThread(comments ?? []), author: item?.by }), [comments, item?.by]);
+  const thread = useMemo(() => ({
+    index: indexThread(comments ?? []), author: item?.by,
+    folded: fold.all, unfolded: !fold.all && fold.turn > 0,
+  }), [comments, item?.by, fold]);
+  // The tree remounts to fold, which takes the focused comment with it, so the
+  // comment that was being read is found again once the new tree is laid out.
+  function foldAll(all: boolean) {
+    const focused = document.activeElement?.closest<HTMLElement>('.comment')?.dataset.commentId;
+    setFold({ turn: fold.turn + 1, all });
+    requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(`.discussion-panel:not([hidden]) [data-comment-id="${focused ?? ''}"]`);
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: 'nearest' });
+    });
+  }
   const unavailable = !item || item.deleted || item.dead;
   const supported = !item?.type || ['story', 'job'].includes(item.type);
   return <section className="discussion-panel" hidden={!active} aria-label="Discussion">
@@ -141,7 +158,7 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
           {!showArticle && <div className="article-links">{url && <Link to={articleTo} className="article-link">Read <Icon name="reader" size={16} /></Link>}<OpenIn url={url} id={id} title={plainTitle(item.title)} /></div>}
         </header>
         {item.text && <div className="story-body"><RichText text={item.text} /></div>}
-        {!supported ? <div className="small-empty"><p>{item.type === 'comment' ? 'This link points to a comment rather than a story, and the thread it belongs to lives on Hacker News.' : 'Continue reading this item on Hacker News.'}</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div>{commentsError ? <Failure retry={() => setCommentsAttempt(commentsAttempt + 1)}>Couldn’t load the comments. A story posted in the last few minutes may not be searchable yet.</Failure> : !comments ? <Skeleton rows={3} /> : threads.length ? <ThreadProvider value={thread}><CommentBatch key={order} comments={threads} /></ThreadProvider> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
+        {!supported ? <div className="small-empty"><p>{item.type === 'comment' ? 'This link points to a comment rather than a story, and the thread it belongs to lives on Hacker News.' : 'Continue reading this item on Hacker News.'}</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><div className="label-controls"><button type="button" className="text-button collapse-all" aria-pressed={fold.all} onClick={() => foldAll(!fold.all)}>{fold.all ? 'Expand all' : 'Collapse all'}</button><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div></div>{commentsError ? <Failure retry={() => setCommentsAttempt(commentsAttempt + 1)}>Couldn’t load the comments. A story posted in the last few minutes may not be searchable yet.</Failure> : !comments ? <Skeleton rows={3} /> : threads.length ? <ThreadProvider value={thread}><CommentBatch key={`${order}:${fold.turn}`} comments={threads} /></ThreadProvider> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
         <div className="discussion-end"><span>That’s the conversation, at your pace.</span><ExternalLink href={hnUrl(id)}>Reply on Hacker News <Icon name="arrow" size={13} /></ExternalLink></div>
       </div>}
     </div>

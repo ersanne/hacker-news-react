@@ -46,7 +46,9 @@ export function excerpt(text: string, limit = 90) {
   return `${(space > limit / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
-export type Thread = { index: ThreadIndex; author?: string };
+// Folding the whole conversation remounts the tree, so each comment reads its
+// starting state from here rather than being told to change.
+export type Thread = { index: ThreadIndex; author?: string; folded?: boolean; unfolded?: boolean };
 const ThreadContext = createContext<Thread>({ index: new Map() });
 export const ThreadProvider = ThreadContext.Provider;
 export function useThread() { return useContext(ThreadContext); }

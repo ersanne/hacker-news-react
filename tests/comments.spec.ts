@@ -128,3 +128,27 @@ test('a reply past the flattening depth names the comment it answers', async ({ 
   await peeks.click();
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-comment-id'))).toBe('3000');
 });
+
+test('X folds the whole conversation and keeps the comment being read', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  await expect(discussion.locator('.comments-list > .comment')).toHaveCount(20);
+
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  const reading = await page.evaluate(() => document.activeElement?.getAttribute('data-comment-id'));
+
+  await page.keyboard.press('X');
+  await expect(discussion.locator('.collapsed-note')).toHaveCount(20);
+  await expect(discussion.getByRole('button', { name: 'Expand all' })).toBeVisible();
+  // The tree is rebuilt to fold it, so the comment being read has to survive.
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-comment-id'))).toBe(reading);
+
+  await page.keyboard.press('X');
+  await expect(discussion.locator('.collapsed-note')).toHaveCount(0);
+  // Expanding everything opens the replies too, not merely the threads.
+  await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
+  await expect(page.getByText('A surviving reply below a deleted comment.', { exact: true })).toBeVisible();
+});
