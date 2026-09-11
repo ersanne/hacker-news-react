@@ -1,0 +1,33 @@
+[tools]
+node = "22.23.2"
+
+[tasks.install]
+run = "npm ci"
+description = "Install dependencies from the lockfile"
+sources = ["package-lock.json"]
+outputs = { auto = true }
+
+[tasks.dev]
+depends = ["install"]
+run = "npm run dev"
+description = "Start the Vite dev server"
+
+[tasks.build]
+depends = ["install"]
+run = "npm run build"
+description = "Typecheck and build for production"
+
+[tasks.test]
+depends = ["install"]
+run = "npm run test"
+description = "Run unit tests"
+
+[tasks.test-e2e]
+depends = ["install"]
+run = "npm run test:e2e"
+description = "Run Playwright end-to-end tests"
+
+[tasks.typecheck]
+depends = ["install"]
+run = "npm run typecheck"
+description = "Typecheck without emitting"

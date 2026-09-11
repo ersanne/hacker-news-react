@@ -4,13 +4,15 @@ A quieter way to read Hacker News. A small, read-only React application with a d
 
 ## Run locally
 
-Use **Node.js 22.12 or newer** (Node 22 is specified in `.nvmrc`).
+Use **Node.js 22.12 or newer**. The exact version is pinned in `mise.toml` (and the major in `.nvmrc` for nvm users).
 
 ```sh
-nvm use
+mise install
 npm ci
 npm run dev
 ```
+
+With [mise](https://mise.jdx.dev) the scripts are also available as tasks: `mise run dev`, `build`, `test`, `test-e2e`, `typecheck`.
 
 Vite prints the local URL. No API keys, environment variables, or backend are required.
 
