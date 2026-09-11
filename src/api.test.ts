@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearCache, getFeed, getItem, getItems } from './api';
+import { clearCache, getFeed, getItem, getItems, searchStories } from './api';
 
 beforeEach(() => { clearCache(); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -57,5 +57,36 @@ describe('HN data client', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce(response({ id: 8 })));
     await expect(getItem(8)).rejects.toThrow('could not be reached');
     await expect(getItem(8)).resolves.toEqual({ id: 8 });
+  });
+
+  it('maps search hits to stories and reports paging', async () => {
+    const urls: string[] = [];
+    const fetcher = vi.fn(async (url: string) => { urls.push(url); return response({
+      hits: [
+        { objectID: '31', title: 'A quiet release', url: 'https://example.com/a', author: 'ada', points: 91, num_comments: 12, created_at_i: 1700000000 },
+        { objectID: '32', title: 'Ask HN: anything?', url: null, story_text: '<p>Text</p>', author: 'grace', points: null, num_comments: null, created_at_i: 1700000100 },
+        { objectID: 'not-a-story' },
+      ],
+      nbPages: 4,
+      nbHits: 97,
+    }); });
+    vi.stubGlobal('fetch', fetcher);
+    const page = await searchStories('quiet release', 2);
+    const url = new URL(urls[0]);
+    expect(url.origin + url.pathname).toBe('https://hn.algolia.com/api/v1/search');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ query: 'quiet release', tags: 'story', hitsPerPage: '30', page: '2' });
+    expect(page).toEqual({
+      pages: 4,
+      total: 97,
+      results: [
+        { id: 31, error: false, item: { id: 31, type: 'story', title: 'A quiet release', url: 'https://example.com/a', text: undefined, by: 'ada', time: 1700000000, score: 91, descendants: 12 } },
+        { id: 32, error: false, item: { id: 32, type: 'story', title: 'Ask HN: anything?', url: undefined, text: '<p>Text</p>', by: 'grace', time: 1700000100, score: undefined, descendants: undefined } },
+      ],
+    });
+  });
+  it('surfaces search transport failures and tolerates an empty payload', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce(response({})));
+    await expect(searchStories('rust')).rejects.toThrow('could not be reached');
+    expect(await searchStories('rust')).toEqual({ results: [], pages: 0, total: 0 });
   });
 });

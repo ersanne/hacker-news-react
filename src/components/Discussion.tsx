@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { getItem, getItems, type Feed, type HNItem, type ItemResult } from '../api';
+import { getItem, getItems, type HNItem, type ItemResult } from '../api';
 import { domain, hnUrl, plainTitle, safeUrl } from '../format';
 import { Author, ExternalLink, Failure, Icon, RichText, Skeleton, Time } from './ui';
 
@@ -46,7 +46,7 @@ function Comment({ item, depth }: { item: HNItem | null; depth: number }) {
   </article>;
 }
 
-export default function Discussion({ id, feed, active }: { id: number; feed: Feed; active: boolean }) {
+export default function Discussion({ id, backTo, active }: { id: number; backTo: string; active: boolean }) {
   const [item, setItem] = useState<HNItem | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(false);
@@ -71,7 +71,7 @@ export default function Discussion({ id, feed, active }: { id: number; feed: Fee
   const unavailable = !item || item.deleted || item.dead;
   const supported = !item?.type || ['story', 'job'].includes(item.type);
   return <section className="discussion-panel" hidden={!active} aria-label="Discussion">
-    <div className="discussion-toolbar"><Link to={`/?feed=${feed}`} className="back-link"><Icon name="back" size={16} /><span>Back to stories</span></Link><ExternalLink href={hnUrl(id)}>View on HN <Icon name="arrow" size={13} /></ExternalLink></div>
+    <div className="discussion-toolbar"><Link to={backTo} className="back-link"><Icon name="back" size={16} /><span>Back to stories</span></Link><ExternalLink href={hnUrl(id)}>View on HN <Icon name="arrow" size={13} /></ExternalLink></div>
     <div className="discussion-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>
       {busy ? <Skeleton rows={5} /> : error ? <Failure retry={() => setAttempt(attempt + 1)}>Couldn’t load this discussion.</Failure> : unavailable ? <div className="unavailable"><h2 tabIndex={-1} ref={heading}>Story unavailable</h2><p>This story may have been removed.</p><ExternalLink href={hnUrl(id)}>Check on Hacker News <Icon name="arrow" size={14} /></ExternalLink></div> : <div className="discussion-inner">
         <header className="article-heading"><div className="eyebrow">{url ? domain(url) : 'FROM THE COMMUNITY'}</div><h2 ref={heading} tabIndex={-1}>{plainTitle(item.title)}</h2><div className="article-meta"><span className="score">▴ {item.score ?? 0} points</span><span>by <Author name={item.by} /></span><Time value={item.time} /></div>{url && <ExternalLink href={url} className="article-link">Read original <Icon name="arrow" size={16} /></ExternalLink>}</header>

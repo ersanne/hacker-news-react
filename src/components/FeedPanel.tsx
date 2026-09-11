@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
 import { clearCache, getFeed, getItems, type Feed, type ItemResult } from '../api';
-import { domain, hnUrl, plainTitle, safeUrl } from '../format';
-import { Author, ExternalLink, Failure, Icon, Skeleton, Time } from './ui';
+import { ExternalLink, Failure, Icon, Skeleton } from './ui';
+import StoryList from './StoryList';
 
 export const feedInfo = {
   top: { title: 'The front page', description: 'What’s catching the community’s attention.' },
@@ -59,23 +58,8 @@ export default function FeedPanel({ feed, active, enabled, selected, read, onRea
       {error && <Failure retry={() => void load(!loaded)}>Couldn’t load the stories. Your connection may need a moment.</Failure>}
       {!loaded && busy && <Skeleton rows={8} />}
       {loaded && !ids.length && <div className="small-empty">No stories here just yet. Check back soon.</div>}
-      <ol className="story-list">
-        {items.map(({ id, item, error: failed }, index) => {
-          if (failed) return <li key={id} className="story-failure"><span className="rank">{String(index + 1).padStart(2, '0')}</span><Failure retry={() => void retryItem(id)}>This story couldn’t load.</Failure></li>;
-          if (!item || item.deleted || item.dead) return <li className="story-unavailable" key={id}><span className="rank">{String(index + 1).padStart(2, '0')}</span><span>Story unavailable</span></li>;
-          const unsupported = item.type && !['story', 'job'].includes(item.type);
-          const url = safeUrl(item.url);
-          return <li key={id} data-story-id={id} className={`story-row ${selected === id ? 'selected' : ''} ${read.has(id) ? 'is-read' : ''}`}>
-            <span className="rank">{String(index + 1).padStart(2, '0')}</span>
-            <div className="story-content">
-              <div className="story-domain">{url ? <ExternalLink href={url}>{domain(url)} <Icon name="arrow" size={11} /></ExternalLink> : <span>{feed === 'ask' ? 'Ask HN' : 'Hacker News'}</span>}{read.has(id) && <span className="read-label">Read</span>}</div>
-              <h2>{unsupported ? <ExternalLink href={hnUrl(id)}>{plainTitle(item.title)}</ExternalLink> : <Link to={`/item?id=${id}&feed=${feed}`} onClick={() => onRead(id)} aria-current={selected === id ? 'true' : undefined}>{plainTitle(item.title)}</Link>}</h2>
-              <div className="story-meta"><span className="score"><span aria-hidden="true">▴</span> {item.score ?? 0}</span><Author name={item.by} /><span className="meta-dot">·</span><Time value={item.time} /><Link className="comment-count" to={`/item?id=${id}&feed=${feed}`} onClick={() => onRead(id)} aria-label={`${item.descendants ?? 0} comments on ${plainTitle(item.title)}`}><Icon name="comment" size={14} />{item.descendants ?? 0}</Link></div>
-            </div>
-            {selected === id && <span className="selection-arrow"><Icon name="chevron" size={14} /></span>}
-          </li>;
-        })}
-      </ol>
+      <StoryList items={items} selected={selected} read={read} onRead={onRead} onRetry={id => void retryItem(id)}
+        href={id => `/item?id=${id}&feed=${feed}`} fallbackSource={feed === 'ask' ? 'Ask HN' : 'Hacker News'} />
       {loaded && items.length < ids.length && <div className="load-more-wrap"><button className="secondary-button" disabled={busy} onClick={() => void load()}>{busy ? 'Loading stories…' : 'Load more stories'} <span aria-hidden="true">↓</span></button><span className="load-caption">{items.length} of {ids.length} stories</span></div>}
       {loaded && items.length > 0 && items.length >= ids.length && <p className="end-note">You’re all caught up. A good time for a little break.</p>}
     </div>

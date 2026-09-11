@@ -52,3 +52,22 @@ export async function mockAPI(page: Page, options: { failItems?: Set<number>; de
   });
   return requests;
 }
+
+export async function mockSearch(page: Page, options: { fail?: boolean } = {}) {
+  const queries: { query: string; page: number }[] = [];
+  await page.route('https://hn.algolia.com/api/v1/search*', async route => {
+    const params = new URL(route.request().url()).searchParams;
+    const query = params.get('query') ?? '';
+    const index = Number(params.get('page') ?? '0');
+    const size = Number(params.get('hitsPerPage') ?? '30');
+    queries.push({ query, page: index });
+    if (options.fail) return route.fulfill({ status: 503, body: 'Unavailable' });
+    const matches = Object.values(fixtureItems).filter(item => item?.type === 'story' && item.title?.toLowerCase().includes(query.toLowerCase()));
+    const hits = matches.slice(index * size, index * size + size).map(item => ({
+      objectID: String(item!.id), title: item!.title, url: item!.url ?? null, story_text: item!.text ?? null,
+      author: item!.by, points: item!.score, num_comments: item!.descendants, created_at_i: item!.time,
+    }));
+    return route.fulfill({ json: { hits, nbHits: matches.length, nbPages: Math.ceil(matches.length / size), page: index } });
+  });
+  return queries;
+}

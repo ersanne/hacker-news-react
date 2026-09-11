@@ -237,3 +237,16 @@ svg { flex-shrink: 0; vertical-align: middle; }
   .discussion-end { line-height: 1.8; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+.search-form { display: flex; align-items: center; gap: 8px; color: var(--muted); border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 6px 14px; }
+.search-form:focus-within { border-color: var(--accent); color: var(--accent); }
+.search-form input { font: inherit; font-size: 12px; width: 168px; border: 0; padding: 2px 0; background: transparent; color: var(--text); }
+.search-form input::placeholder { color: var(--subtle); }
+.search-form input:focus-visible { outline: none; }
+.search-form input::-webkit-search-cancel-button { display: none; }
+.clear-search { font-size: 10px; letter-spacing: .6px; text-transform: uppercase; }
+@media (max-width: 899px) {
+  .feed-nav { flex-wrap: wrap; gap: 12px; padding-block: 10px; }
+  .search-form { width: 100%; }
+  .search-form input { width: 100%; }
+}
