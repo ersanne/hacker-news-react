@@ -36,6 +36,16 @@ fixtureItems[2000] = { id: 2000, type: 'comment', deleted: true, kids: [3000] };
 fixtureItems[3000] = { id: 3000, type: 'comment', by: 'grace', text: '<p>A surviving reply below a deleted comment.</p>', kids: [4000] };
 fixtureItems[4000] = { id: 4000, type: 'comment', by: 'deepreader', text: `<pre><code>${'very_long_code_'.repeat(30)}</code></pre><p>${'unbroken'.repeat(80)}</p>` };
 fixtureItems[999] = null;
+// Reachable only by its own link, so the conventions it carries never shift
+// the counts the feed tests assert.
+fixtureItems[66] = {
+  id: 66, type: 'story', title: 'A story whose comments use every convention', url: 'https://example.com/story/66',
+  by: 'paulg', score: 10, time: Math.floor(Date.now() / 1000) - 600, descendants: 1, kids: [6600],
+};
+fixtureItems[6600] = {
+  id: 6600, type: 'comment', by: 'conventions', time: Math.floor(Date.now() / 1000) - 300,
+  text: 'Worth comparing with <a href="https://news.ycombinator.com/item?id=1">the earlier thread</a> and <a href="https://example.com/elsewhere">this write-up</a>.',
+};
 
 export async function mockAPI(page: Page, options: { failItems?: Set<number>; delayItem?: number; releaseItem?: Promise<void>; failFeed?: boolean } = {}) {
   const requests: number[] = [];

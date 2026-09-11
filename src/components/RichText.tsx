@@ -1,9 +1,33 @@
 import { createElement, memo, useMemo, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router';
 import { parseComment, type RichNode } from '../richtext';
 import { safeUrl } from '../format';
 import { ExternalLink } from './ui';
 
 const VOID_TAGS = new Set(['br']);
+const CARRIED = ['feed', 'q', 'article', 'panes'];
+
+// An HN item link points at something this reader already knows how to show,
+// so it opens here, in the arrangement of panes the reader is already using.
+function itemId(href: string) {
+  const url = new URL(href);
+  if (url.hostname.replace(/^www\./, '') !== 'news.ycombinator.com' || url.pathname !== '/item') return null;
+  const id = Number(url.searchParams.get('id'));
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function CommentLink({ href, children }: { href: string; children: ReactNode }) {
+  const location = useLocation();
+  const id = itemId(href);
+  if (id === null) return <ExternalLink href={href}>{children}</ExternalLink>;
+  const params = new URLSearchParams({ id: String(id) });
+  const current = new URLSearchParams(location.search);
+  for (const name of CARRIED) {
+    const value = current.get(name);
+    if (value !== null) params.set(name, value);
+  }
+  return <Link to={`/item?${params.toString()}`}>{children}</Link>;
+}
 
 function render(node: RichNode, key: number): ReactNode {
   if (typeof node === 'string') return node;
@@ -12,7 +36,7 @@ function render(node: RichNode, key: number): ReactNode {
     // Links are the one place a pass sets an attribute, so the href is checked
     // again here rather than trusted from the tree.
     const href = safeUrl(node.attrs.href);
-    return href ? <ExternalLink key={key} href={href}>{children}</ExternalLink> : <span key={key}>{children}</span>;
+    return href ? <CommentLink key={key} href={href}>{children}</CommentLink> : <span key={key}>{children}</span>;
   }
   return createElement(node.tag, { key, ...node.attrs }, VOID_TAGS.has(node.tag) ? undefined : children);
 }
