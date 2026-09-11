@@ -26,20 +26,60 @@ function wrapLeadingBlock(root: ParentNode) {
   paragraph.append(...leading);
 }
 
+const QUOTE = /^(\s*>+)\s?/;
+// Deep enough for a reply quoting a reply; past that the indent costs more
+// column than the nesting explains.
+const MAX_QUOTE = 4;
+// A marker only means anything at the start of a line, so a paragraph is split
+// into lines exactly when one of them carries one.
+const MARKERS = [QUOTE];
+
+// HN starts a paragraph at a blank line and leaves a single newline in the
+// text, where it renders as a space. Lines that open with a marker were meant
+// to stand alone, so those paragraphs are split and the rest are left as the
+// single run of prose HN shows.
+function splitLines(paragraph: HTMLParagraphElement) {
+  const text = paragraph.textContent ?? '';
+  if (!text.includes('\n')) return;
+  if (!text.split('\n').some(line => MARKERS.some(marker => marker.test(line)))) return;
+  const lines: Node[][] = [[]];
+  for (const node of [...paragraph.childNodes]) {
+    const value = node.nodeType === Node.TEXT_NODE ? node.nodeValue ?? '' : null;
+    if (value === null || !value.includes('\n')) { lines[lines.length - 1].push(node); continue; }
+    value.split('\n').forEach((piece, index) => {
+      if (index) lines.push([]);
+      if (piece) lines[lines.length - 1].push(document.createTextNode(piece));
+    });
+  }
+  paragraph.replaceWith(...lines.filter(nodes => nodes.length).map(nodes => {
+    const line = document.createElement('p');
+    line.append(...nodes);
+    return line;
+  }));
+}
+
 // HN marks quoted text with a leading ">" in the paragraph itself, so the
-// markers are lifted into real blockquotes and adjacent quoted lines join up.
+// markers are lifted into real blockquotes, adjacent quoted lines join up, and
+// a run of ">" nests as deeply as it counts.
 function liftQuotes(root: ParentNode) {
-  let quote: HTMLQuoteElement | null = null;
+  let stack: HTMLQuoteElement[] = [];
   for (const paragraph of [...root.querySelectorAll('p')]) {
-    if (!/^\s*>/.test(paragraph.textContent ?? '')) { quote = null; continue; }
+    const marker = QUOTE.exec(paragraph.textContent ?? '');
+    if (!marker) { stack = []; continue; }
+    // A quote continues only while its paragraphs stay adjacent to it.
+    if (stack.length && paragraph.previousElementSibling !== stack[0]) stack = [];
     const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
     const first = walker.nextNode();
-    if (first) first.nodeValue = (first.nodeValue ?? '').replace(/^\s*>+\s?/, '');
-    if (!quote || paragraph.previousElementSibling !== quote) {
-      quote = document.createElement('blockquote');
-      paragraph.replaceWith(quote);
+    if (first) first.nodeValue = (first.nodeValue ?? '').replace(QUOTE, '');
+    const depth = Math.min(marker[1].replace(/\s/g, '').length, MAX_QUOTE);
+    stack.length = Math.min(stack.length, depth);
+    while (stack.length < depth) {
+      const quote = document.createElement('blockquote');
+      if (stack.length) stack[stack.length - 1].append(quote);
+      else paragraph.replaceWith(quote);
+      stack.push(quote);
     }
-    quote.append(paragraph);
+    stack[stack.length - 1].append(paragraph);
   }
 }
 
@@ -64,6 +104,7 @@ export function parseComment(value: string): RichNode[] {
   const template = document.createElement('template');
   template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: COMMENT_TAGS, ALLOWED_ATTR: ['href', 'title'] });
   wrapLeadingBlock(template.content);
+  for (const paragraph of [...template.content.querySelectorAll('p')]) splitLines(paragraph);
   liftQuotes(template.content);
   return [...template.content.childNodes].flatMap(child => toNode(child) ?? []);
 }

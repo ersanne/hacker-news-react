@@ -41,6 +41,23 @@ describe('comment text conventions', () => {
     expect(parse('<p>&gt; first line</p><p>&gt; second line</p><p>A reply</p>'))
       .toBe('<blockquote><p>first line</p><p>second line</p></blockquote><p>A reply</p>');
   });
+  it('nests a quote as deeply as its markers count, and unwinds again', () => {
+    expect(parse('<p>&gt; a</p><p>&gt;&gt; b</p><p>&gt; c</p>'))
+      .toBe('<blockquote><p>a</p><blockquote><p>b</p></blockquote><p>c</p></blockquote>');
+  });
+  it('stops indenting a quote war before it runs out of column', () => {
+    expect(parse('<p>&gt;&gt;&gt;&gt;&gt;&gt; deep</p>'))
+      .toBe('<blockquote><blockquote><blockquote><blockquote><p>deep</p></blockquote></blockquote></blockquote></blockquote>');
+  });
+  it('splits a paragraph into lines only where a line carries a marker', () => {
+    expect(parse('<p>&gt; first\n&gt; second</p>')).toBe('<blockquote><p>first</p><p>second</p></blockquote>');
+    expect(parse('<p>Prose that\nwraps in the source</p>')).toBe('<p>Prose that\nwraps in the source</p>');
+    expect(parse('<p>Intro:\n&gt; quoted</p>')).toBe('<p>Intro:</p><blockquote><p>quoted</p></blockquote>');
+  });
+  it('keeps the markup inside a line it splits', () => {
+    expect(parse('<p>&gt; see <a href="https://example.com">this</a>\n&gt; and that</p>'))
+      .toBe('<blockquote><p>see <a href="https://example.com">this</a></p><p>and that</p></blockquote>');
+  });
   it('keeps whitespace between inline elements intact', () => {
     expect(parse('<p><i>foo</i> bar <b>baz</b></p>')).toBe('<p><i>foo</i> bar <b>baz</b></p>');
   });
