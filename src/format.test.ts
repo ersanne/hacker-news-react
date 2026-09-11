@@ -9,6 +9,10 @@ describe('untrusted HN content', () => {
     expect(html).toContain('href="https://example.com"');
     expect(html).not.toMatch(/script|onerror|onclick|<img/);
   });
+  it('turns the plain-text quote markers HN uses into blockquotes', () => {
+    const html = sanitize('<p>&gt; first line</p><p>&gt; second line</p><p>A reply</p>');
+    expect(html).toBe('<blockquote><p>first line</p><p>second line</p></blockquote><p>A reply</p>');
+  });
   it('accepts only absolute HTTP or HTTPS article links', () => {
     expect(safeUrl('javascript:alert(1)')).toBeUndefined();
     expect(safeUrl('data:text/html,hello')).toBeUndefined();

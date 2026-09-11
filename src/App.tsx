@@ -16,6 +16,7 @@ import { readStorage, useReadStories, useSavedStories, writeStorage } from './st
 type Theme = 'system' | 'light' | 'dark';
 type View = Feed | 'saved';
 const views: View[] = [...feeds, 'saved'];
+const tabLabels: Record<Feed, string> = { top: 'Top', new: 'New', best: 'Best', ask: 'Ask HN', show: 'Show HN' };
 
 export default function App() {
   const location = useLocation();
@@ -139,18 +140,38 @@ export default function App() {
   const feedProps = { refreshAt, checkAt, onBusy: reportBusy };
   return <SettingsProvider value={settings}><div className="app-shell" data-width={settings.width} data-density={settings.density} data-order={settings.order}>
     <a className="skip-link" href="#reader">Skip to reader</a>
-    <header className="app-header"><Link className="brand" to="/" aria-label="HN Reader home"><span className="brand-mark">Y</span><span>hn<span className="brand-light">reader</span><span className="brand-period">.</span></span></Link><span className="header-tagline">A quieter corner of Hacker News.</span><div className="theme-control">{!settings.heading && <button type="button" className={`icon-button refresh ${refreshing ? 'is-loading' : ''}`} aria-label="Refresh stories" title="Refresh stories" disabled={refreshing} onClick={refreshNow}><Icon name="refresh" size={16} /></button>}<button type="button" className="icon-button" aria-label="View settings" title="View settings" onClick={() => setSettingsOpen(true)}><Icon name="sliders" size={16} /></button><button type="button" className="icon-button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={openHelp}><Icon name="help" size={16} /></button><Icon name="sun" size={16} /><select aria-label="Color theme" value={theme} onChange={event => setTheme(event.target.value as Theme)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div></header>
-    <nav className="feed-nav" aria-label="Story feeds"><div className="feed-tabs">{feeds.map(value => <Link key={value} to={`/?feed=${value}${suffix}`} aria-current={!search && value === view ? 'page' : undefined}><span>{value === 'top' && <span className="tab-star" aria-hidden="true">✳</span>}{value[0].toUpperCase() + value.slice(1)}</span>{value === 'ask' && <span className="nav-suffix">HN</span>}{value === 'show' && <span className="nav-suffix">HN</span>}</Link>)}
-      <Link to={`/?feed=saved${suffix}`} aria-current={!search && view === 'saved' ? 'page' : undefined}><span>Saved</span>{saved.size > 0 && <span className="nav-suffix">{saved.size}</span>}</Link></div>
-      <form className="search-form" role="search" onSubmit={submitSearch}><Icon name="search" size={14} /><input key={search} ref={searchInput} type="search" name="q" defaultValue={search} maxLength={200} placeholder="Search stories" aria-label="Search Hacker News stories" aria-keyshortcuts="/" />{search && <button type="button" className="text-button clear-search" onClick={() => void navigate(`/?feed=${view}${suffix}`)}>Clear</button>}</form></nav>
+    <header className="app-header">
+      <Link className="brand" to="/" aria-label="HN Reader home"><span className="brand-mark">Y</span><span>hn<span className="brand-light">reader</span><span className="brand-period">.</span></span></Link>
+      <span className="header-tagline">A quieter corner of Hacker News.</span>
+      <div className="header-tools">
+        <form className="search-form" role="search" onSubmit={submitSearch}><Icon name="search" size={14} /><input key={search} ref={searchInput} type="search" name="q" defaultValue={search} maxLength={200} placeholder="Search stories" aria-label="Search Hacker News stories" aria-keyshortcuts="/" />{search && <button type="button" className="text-button clear-search" onClick={() => void navigate(`/?feed=${view}${suffix}`)}>Clear</button>}</form>
+        {/* All three panes are toggled from one place, so each pane's own
+            toolbar is left to actions on its content. */}
+        {selected && <div className="mode-switch pane-switch" role="group" aria-label="Panes">
+          <button type="button" data-pane="list" aria-pressed={!hideFeed} onClick={() => togglePane('nofeed')}>List</button>
+          <button type="button" data-pane="comments" aria-pressed={!hideComments} onClick={() => togglePane('nocomments')}>Comments</button>
+          <button type="button" data-pane="article" aria-pressed={showArticle} onClick={toggleArticle}>Article</button>
+        </div>}
+        {selected && <button type="button" className="icon-button pane-focus" aria-pressed={hideFeed && hideComments} aria-label={hideFeed && hideComments ? 'Leave focus mode' : 'Focus mode'} title={hideFeed && hideComments ? 'Leave focus mode' : 'Focus mode'} onClick={enterFocus}><Icon name="focus" size={14} /></button>}
+        <div className="theme-control">
+          {!settings.heading && <button type="button" className={`icon-button refresh ${refreshing ? 'is-loading' : ''}`} aria-label="Refresh stories" title="Refresh stories" disabled={refreshing} onClick={refreshNow}><Icon name="refresh" size={16} /></button>}
+          <button type="button" className="icon-button" aria-label="View settings" title="View settings" onClick={() => setSettingsOpen(true)}><Icon name="sliders" size={16} /></button>
+          <button type="button" className="icon-button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={openHelp}><Icon name="help" size={16} /></button>
+          <Icon name="sun" size={16} />
+          <select aria-label="Color theme" value={theme} onChange={event => setTheme(event.target.value as Theme)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
+        </div>
+      </div>
+    </header>
+    <nav className="feed-nav" aria-label="Story feeds"><div className="feed-tabs">{feeds.map(value => <Link key={value} to={`/?feed=${value}${suffix}`} aria-current={!search && value === view ? 'page' : undefined}><span>{value === 'top' && <span className="tab-star" aria-hidden="true">✳</span>}{tabLabels[value]}</span></Link>)}
+      <Link to={`/?feed=saved${suffix}`} aria-current={!search && view === 'saved' ? 'page' : undefined}><span>Saved</span>{saved.size > 0 && <span className="nav-suffix">{saved.size}</span>}</Link></div></nav>
     <main id="reader" tabIndex={-1} className={`reader ${selected || invalid ? 'has-selection' : ''} ${selected && showArticle ? 'has-article' : ''} ${hideFeed ? 'hide-feed' : ''} ${hideComments ? 'hide-comments' : ''}`}>
       <div className="feed-column">
         {feeds.map(value => <FeedPanel key={value} feed={value} active={!search && value === view} enabled={!search && visited.includes(value)} hideRead={hideRead} onHideRead={changeHideRead} {...listProps} {...feedProps} />)}
         <SavedPanel active={!search && view === 'saved'} {...listProps} />
         {search && <SearchPanel key={search} query={search} active hideRead={hideRead} onHideRead={changeHideRead} {...listProps} {...feedProps} />}
       </div>
-      <div className="article-column">{opened.map(id => <Article key={id} id={id} active={id === selected} backTo={backTo} commentsTo={commentsTo} hideComments={hideComments} commentsToggleTo={paneToggleTo('nocomments')} focusTo={focusTo} focused={hideFeed && hideComments} />)}</div>
-      <div className="discussion-column">{invalid ? <div className="invalid-route"><h1>Nothing to read here.</h1><p>This link doesn’t point to a valid story.</p><Link to="/">Back to the front page</Link></div> : <>{!selected && <EmptyDiscussion />}{opened.map(id => <Discussion key={id} id={id} backTo={backTo} active={id === selected} articleTo={articleTo} showArticle={showArticle} saved={saved.has(id)} onToggleSaved={() => toggleSaved(id)} hideFeed={hideFeed} feedToggleTo={paneToggleTo('nofeed')} />)}</>}</div>
+      <div className="article-column">{opened.map(id => <Article key={id} id={id} active={id === selected} backTo={backTo} commentsTo={commentsTo} />)}</div>
+      <div className="discussion-column">{invalid ? <div className="invalid-route"><h1>Nothing to read here.</h1><p>This link doesn’t point to a valid story.</p><Link to="/">Back to the front page</Link></div> : <>{!selected && <EmptyDiscussion />}{opened.map(id => <Discussion key={id} id={id} backTo={backTo} active={id === selected} articleTo={articleTo} showArticle={showArticle} saved={saved.has(id)} onToggleSaved={() => toggleSaved(id)} />)}</>}</div>
     </main>
     <ViewSettings open={settingsOpen} settings={settings} onChange={updateSettings} onClose={() => setSettingsOpen(false)}
       onShortcuts={() => { setSettingsOpen(false); setHelpOpen(true); }} />

@@ -35,11 +35,11 @@ export default function StoryList({ items, selected, read, onRead, saved, onTogg
         onMouseEnter={() => warm(id)} onMouseLeave={cancel} onFocus={() => warm(id)} onBlur={cancel}>
         <Favicon url={url} fallback={fallbackSource} className="story-favicon" />
         <div className="story-content">
-          <div className="story-domain">{rank}{url ? <ExternalLink href={url}>{domain(url)} <Icon name="arrow" size={11} /></ExternalLink> : <span>{fallbackSource}</span>}{read.has(id) && <span className="read-label">Read</span>}</div>
+          <div className="story-domain">{rank}{read.has(id) && <span className="read-dot" title="Read"><span className="sr-only">Read</span></span>}{url ? <ExternalLink href={url}>{domain(url)} <Icon name="arrow" size={11} /></ExternalLink> : <span>{fallbackSource}</span>}</div>
           <h2>{unsupported ? <ExternalLink href={hnUrl(id)}>{plainTitle(item.title)}</ExternalLink> : <Link to={href(id)} onClick={() => onRead(id)} aria-current={selected === id ? 'true' : undefined}>{plainTitle(item.title)}</Link>}</h2>
-          <div className="story-meta"><span className="score"><span aria-hidden="true">▴</span> {item.score ?? 0}</span><Author name={item.by} /><span className="meta-dot">·</span><Time value={item.time} /><SaveButton saved={saved.has(id)} onToggle={() => onToggleSaved(id)} title={plainTitle(item.title)} /><Link className="comment-count" to={href(id)} onClick={() => onRead(id)} aria-label={`${item.descendants ?? 0} comments on ${plainTitle(item.title)}`}><Icon name="comment" size={14} />{item.descendants ?? 0}</Link></div>
+          <div className="story-meta"><span className="score"><span aria-hidden="true">▴</span> {item.score ?? 0}</span><Link className="comment-count" to={href(id)} onClick={() => onRead(id)} aria-label={`${item.descendants ?? 0} comments on ${plainTitle(item.title)}`}><Icon name="comment" size={14} />{item.descendants ?? 0}</Link><span className="meta-dot">·</span><Author name={item.by} /><span className="meta-dot">·</span><Time value={item.time} /></div>
         </div>
-        {selected === id && <span className="selection-arrow"><Icon name="chevron" size={14} /></span>}
+        <SaveButton saved={saved.has(id)} onToggle={() => onToggleSaved(id)} title={plainTitle(item.title)} className="story-star" />
       </li>;
     })}
   </ol>;

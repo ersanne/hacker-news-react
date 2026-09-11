@@ -1,8 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getItem, getItems, type HNItem, type ItemResult } from '../api';
-import { archiveUrl, domain, hnUrl, plainTitle, safeUrl } from '../format';
-import { Author, ExternalLink, Failure, Favicon, Icon, RichText, SaveButton, Skeleton, Time } from './ui';
+import { domain, hnUrl, plainTitle, safeUrl } from '../format';
+import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, RichText, SaveButton, Skeleton, Time } from './ui';
+
+// Item ids are handed out in order, so they sort by age without the comments
+// themselves having been fetched.
+type Order = 'hn' | 'newest' | 'oldest';
+const orders: [Order, string][] = [['hn', 'HN order'], ['newest', 'Newest first'], ['oldest', 'Oldest first']];
 
 function CommentBatch({ ids, depth = 0 }: { ids: number[]; depth?: number }) {
   const [items, setItems] = useState<ItemResult[]>([]);
@@ -36,7 +41,13 @@ function Comment({ item, depth }: { item: HNItem | null; depth: number }) {
   const removed = item.deleted || item.dead;
   const replies = item.kids ?? [];
   return <article className={`comment ${depth >= 3 ? 'flat-thread' : ''}`}>
-    <div className="comment-header"><span className="avatar" aria-hidden="true">{removed ? '–' : (item.by?.[0] ?? '?').toUpperCase()}</span><span className="comment-author">{removed ? 'Removed comment' : <Author name={item.by} />}</span><Time value={item.time} /><button className="collapse-button" aria-label={`${collapsed ? 'Expand' : 'Collapse'} comment by ${item.by ?? 'unknown author'}`} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)}>{collapsed ? '+' : '−'}</button></div>
+    <div className="comment-header">
+      <button className="collapse-target" aria-label={`${collapsed ? 'Expand' : 'Collapse'} comment by ${item.by ?? 'unknown author'}`} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)} />
+      <span className="collapse-mark" aria-hidden="true">{collapsed ? '+' : '−'}</span>
+      <span className="avatar" aria-hidden="true">{removed ? '–' : (item.by?.[0] ?? '?').toUpperCase()}</span>
+      <span className="comment-author">{removed ? 'Removed comment' : <Author name={item.by} />}</span>
+      <Time value={item.time} />
+    </div>
     {collapsed && <span className="collapsed-note">Comment collapsed{replies.length ? ` · ${replies.length} direct ${replies.length === 1 ? 'reply' : 'replies'}` : ''}</span>}
     <div hidden={collapsed}>
       {removed ? <p className="missing-comment">This comment is no longer available.</p> : <RichText text={item.text ?? ''} />}
@@ -46,11 +57,12 @@ function Comment({ item, depth }: { item: HNItem | null; depth: number }) {
   </article>;
 }
 
-export default function Discussion({ id, backTo, active, articleTo, showArticle, saved, onToggleSaved, hideFeed, feedToggleTo }: {
+export default function Discussion({ id, backTo, active, articleTo, showArticle, saved, onToggleSaved }: {
   id: number; backTo: string; active: boolean; articleTo: string; showArticle: boolean;
-  saved: boolean; onToggleSaved: () => void; hideFeed: boolean; feedToggleTo: string;
+  saved: boolean; onToggleSaved: () => void;
 }) {
   const [item, setItem] = useState<HNItem | null>(null);
+  const [order, setOrder] = useState<Order>('hn');
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -71,6 +83,10 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
     }
   }, [active, busy, item]);
   const url = safeUrl(item?.url);
+  const kids = useMemo(() => {
+    const ids = item?.kids ?? [];
+    return order === 'hn' ? ids : [...ids].sort((a, b) => order === 'newest' ? b - a : a - b);
+  }, [item, order]);
   const unavailable = !item || item.deleted || item.dead;
   const supported = !item?.type || ['story', 'job'].includes(item.type);
   return <section className="discussion-panel" hidden={!active} aria-label="Discussion">
@@ -82,16 +98,20 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
       </div>
       <div className="discussion-actions">
         <SaveButton saved={saved} onToggle={onToggleSaved} title={plainTitle(item?.title)} className="with-label" />
-        <Link to={feedToggleTo} className="pane-hide pane-feed">{hideFeed ? 'Show list' : 'Hide list'}</Link>
-        {!showArticle && <Link to={articleTo} className="pane-show"><Icon name="reader" size={13} />Show article</Link>}
-        <ExternalLink href={hnUrl(id)}>View on HN <Icon name="arrow" size={13} /></ExternalLink>
       </div>
     </div>
     <div className="discussion-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>
       {busy ? <Skeleton rows={5} /> : error ? <Failure retry={() => setAttempt(attempt + 1)}>Couldn’t load this discussion.</Failure> : unavailable ? <div className="unavailable"><h2 tabIndex={-1} ref={heading}>Story unavailable</h2><p>This story may have been removed.</p><ExternalLink href={hnUrl(id)}>Check on Hacker News <Icon name="arrow" size={14} /></ExternalLink></div> : <div className="discussion-inner">
-        <header className="article-heading"><div className="eyebrow article-source">{url && <Favicon url={url} />}{url ? domain(url) : 'FROM THE COMMUNITY'}</div><h2 ref={heading} tabIndex={-1}>{plainTitle(item.title)}</h2><div className="article-meta"><span className="score">▴ {item.score ?? 0} points</span><span>by <Author name={item.by} /></span><Time value={item.time} /></div>{url && <div className="article-links"><Link to={articleTo} className="article-link">Read here <Icon name="reader" size={16} /></Link><ExternalLink href={url}>Original <Icon name="arrow" size={13} /></ExternalLink><ExternalLink href={archiveUrl(url)}><Icon name="archive" size={13} /> archive.is</ExternalLink></div>}</header>
+        {/* The reading pane carries the full title, so the conversation keeps
+            only as much of the story as a header needs when both are open. */}
+        <header className={`article-heading ${showArticle ? 'is-compact' : ''}`}>
+          {!showArticle && <div className="eyebrow article-source">{url && <Favicon url={url} />}{url ? domain(url) : 'FROM THE COMMUNITY'}</div>}
+          <h2 ref={heading} tabIndex={-1}>{plainTitle(item.title)}</h2>
+          <div className="article-meta"><span className="score"><span aria-hidden="true">▴</span> {item.score ?? 0} points</span><span className="meta-dot">·</span><span>by <Author name={item.by} /></span><span className="meta-dot">·</span><Time value={item.time} /><span className="meta-dot">·</span><span>{item.descendants ?? 0} comments</span></div>
+          {!showArticle && <div className="article-links">{url && <Link to={articleTo} className="article-link">Read <Icon name="reader" size={16} /></Link>}<OpenIn url={url} id={id} /></div>}
+        </header>
         {item.text && <div className="story-body"><RichText text={item.text} /></div>}
-        {!supported ? <div className="small-empty"><p>Continue reading this item on Hacker News.</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><span>HN order</span></div>{item.kids?.length ? <CommentBatch ids={item.kids} /> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
+        {!supported ? <div className="small-empty"><p>Continue reading this item on Hacker News.</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div>{kids.length ? <CommentBatch ids={kids} /> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
         <div className="discussion-end"><span>That’s the conversation, at your pace.</span><ExternalLink href={hnUrl(id)}>Reply on Hacker News <Icon name="arrow" size={13} /></ExternalLink></div>
       </div>}
     </div>

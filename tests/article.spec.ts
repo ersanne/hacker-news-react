@@ -30,16 +30,20 @@ test('the article pane renders extracted text and switches to an embed', async (
   await expect(page.getByRole('region', { name: 'Article', exact: true }).locator('iframe')).toBeVisible();
 });
 
-test('article links point at the original and at its archive snapshot', async ({ page }) => {
+test('one menu lists every way out of the app', async ({ page }) => {
   await mockAPI(page);
   await mockReader(page);
   await page.goto('/item?id=1&feed=top&article=1');
   const pane = page.getByRole('region', { name: 'Article', exact: true });
-  await expect(pane.getByRole('link', { name: /Open original/ })).toHaveAttribute('href', story);
+  await pane.locator('.open-in summary').click();
+  await expect(pane.getByRole('link', { name: /Original/ })).toHaveAttribute('href', story);
   await expect(pane.getByRole('link', { name: /archive\.is/ })).toHaveAttribute('href', `https://archive.is/newest/${story}`);
+  await expect(pane.getByRole('link', { name: /HN discussion/ })).toHaveAttribute('href', 'https://news.ycombinator.com/item?id=1');
 
   await page.goto('/item?id=1&feed=top');
   const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  await expect(discussion.getByRole('link', { name: /^Read/ })).toHaveAttribute('href', /article=1/);
+  await discussion.locator('.open-in summary').click();
   await expect(discussion.getByRole('link', { name: /archive\.is/ })).toHaveAttribute('href', `https://archive.is/newest/${story}`);
 });
 

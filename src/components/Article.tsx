@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { getArticle, getItem, type HNItem } from '../api';
 import { archiveUrl, domain, plainTitle, readingTime, safeUrl, sanitizeArticle } from '../format';
 import { readStorage, writeStorage } from '../storage';
-import { ExternalLink, Failure, Favicon, Icon, Skeleton } from './ui';
+import { ExternalLink, Failure, Favicon, Icon, OpenIn, Skeleton } from './ui';
 
 type Mode = 'reader' | 'embed';
 
@@ -36,9 +36,8 @@ function Reader({ url }: { url: string }) {
   </>;
 }
 
-export default function Article({ id, active, backTo, commentsTo, hideComments, commentsToggleTo, focusTo, focused }: {
+export default function Article({ id, active, backTo, commentsTo }: {
   id: number; active: boolean; backTo: string; commentsTo: string;
-  hideComments: boolean; commentsToggleTo: string; focusTo: string; focused: boolean;
 }) {
   const [item, setItem] = useState<HNItem | null>(null);
   const [busy, setBusy] = useState(true);
@@ -67,16 +66,11 @@ export default function Article({ id, active, backTo, commentsTo, hideComments, 
         <Link to={commentsTo} className="pane-tab"><Icon name="comment" size={14} />Comments</Link>
       </div>
       <div className="article-actions">
-        {url && <>
-          <div className="mode-switch" role="group" aria-label="Article view">
-            <button type="button" aria-pressed={mode === 'reader'} onClick={() => choose('reader')}><Icon name="reader" size={13} />Reader</button>
-            <button type="button" aria-pressed={mode === 'embed'} onClick={() => choose('embed')}><Icon name="embed" size={13} />Embed</button>
-          </div>
-          <ExternalLink href={archiveUrl(url)}><Icon name="archive" size={13} /> archive.is</ExternalLink>
-        </>}
-        <Link to={commentsToggleTo} className="pane-hide pane-comments">{hideComments ? 'Show comments' : 'Hide comments'}</Link>
-        <Link to={focusTo} className="icon-button pane-focus" aria-label={focused ? 'Leave focus mode' : 'Focus mode'} title={focused ? 'Leave focus mode' : 'Focus mode'} aria-pressed={focused}><Icon name="focus" size={14} /></Link>
-        <Link to={commentsTo} className="pane-hide">Hide article</Link>
+        {url && <div className="mode-switch" role="group" aria-label="Article view">
+          <button type="button" aria-pressed={mode === 'reader'} onClick={() => choose('reader')}><Icon name="reader" size={13} />Reader</button>
+          <button type="button" aria-pressed={mode === 'embed'} onClick={() => choose('embed')}><Icon name="embed" size={13} />Embed</button>
+        </div>}
+        <OpenIn url={url} id={id} />
       </div>
     </div>
     <div className="article-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>
@@ -88,7 +82,6 @@ export default function Article({ id, active, backTo, commentsTo, hideComments, 
         <header className="article-heading">
           <div className="eyebrow article-source"><Favicon url={url} />{domain(url)}</div>
           <h2>{title}</h2>
-          <ExternalLink href={url} className="article-link">Open original <Icon name="arrow" size={16} /></ExternalLink>
         </header>
         {mode === 'reader' ? <Reader url={url} /> : <div className="article-embed">
           <iframe src={url} title={`${title} (embedded)`} loading="lazy" referrerPolicy="no-referrer"

@@ -21,17 +21,34 @@ export function plainTitle(value = 'Untitled story') {
 const COMMENT_TAGS = ['p', 'a', 'em', 'i', 'strong', 'b', 'code', 'pre', 'blockquote', 'br', 'ul', 'ol', 'li'];
 const ARTICLE_TAGS = [...COMMENT_TAGS, 'h1', 'h2', 'h3', 'h4', 'hr', 'img', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
 
-function clean(value: string, tags: string[], attributes: string[]) {
+function clean(value: string, tags: string[], attributes: string[], transform?: (root: ParentNode) => void) {
   const template = document.createElement('template');
   template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: tags, ALLOWED_ATTR: attributes });
   for (const link of template.content.querySelectorAll('a')) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
   }
+  transform?.(template.content);
   return template.innerHTML;
 }
+// HN marks quoted text with a leading ">" in the paragraph itself, so the
+// markers are lifted into real blockquotes and adjacent quoted lines join up.
+function liftQuotes(root: ParentNode) {
+  let quote: HTMLQuoteElement | null = null;
+  for (const paragraph of [...root.querySelectorAll('p')]) {
+    if (!/^\s*>/.test(paragraph.textContent ?? '')) { quote = null; continue; }
+    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+    const first = walker.nextNode();
+    if (first) first.nodeValue = (first.nodeValue ?? '').replace(/^\s*>+\s?/, '');
+    if (!quote || paragraph.previousElementSibling !== quote) {
+      quote = document.createElement('blockquote');
+      paragraph.replaceWith(quote);
+    }
+    quote.append(paragraph);
+  }
+}
 export function sanitize(value: string) {
-  return clean(value, COMMENT_TAGS, ['href', 'title']);
+  return clean(value, COMMENT_TAGS, ['href', 'title'], liftQuotes);
 }
 // Extracted article markdown renders headings, images and tables that comment
 // HTML never contains, so it gets its own wider allowlist.

@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { ago, domain, faviconUrl, sanitize } from '../format';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ago, archiveUrl, domain, faviconUrl, hnUrl, sanitize } from '../format';
 
 export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus'; size?: number }) {
   const paths = {
@@ -38,6 +38,27 @@ export function SaveButton({ saved, onToggle, title, className = '' }: { saved: 
   return <button type="button" className={`save-button ${saved ? 'is-saved' : ''} ${className}`} aria-pressed={saved}
     aria-label={`${saved ? 'Remove' : 'Save'} ${title}`} title={saved ? 'Remove from saved' : 'Save story'}
     onClick={event => { event.preventDefault(); event.stopPropagation(); onToggle(); }}><Icon name="star" size={14} /></button>;
+}
+// Every way out of the app lives behind one menu, so a story offers a single
+// primary action and one place that lists the rest.
+export function OpenIn({ url, id }: { url?: string; id: number }) {
+  const box = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function away(event: PointerEvent) {
+      if (box.current?.open && !box.current.contains(event.target as Node)) box.current.open = false;
+    }
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, []);
+  function close() { if (box.current) box.current.open = false; }
+  return <details className="open-in" ref={box} onKeyDown={event => { if (event.key === 'Escape') close(); }}>
+    <summary>Open in<span aria-hidden="true">…</span></summary>
+    <div className="open-in-menu" onClick={close}>
+      {url && <ExternalLink href={url}>Original <Icon name="arrow" size={12} /></ExternalLink>}
+      {url && <ExternalLink href={archiveUrl(url)}><Icon name="archive" size={12} /> archive.is</ExternalLink>}
+      <ExternalLink href={hnUrl(id)}>HN discussion <Icon name="arrow" size={12} /></ExternalLink>
+    </div>
+  </details>;
 }
 export function ExternalLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
   return <a href={href} className={className} target="_blank" rel="noopener noreferrer">{children}<span className="sr-only"> (opens in a new tab)</span></a>;

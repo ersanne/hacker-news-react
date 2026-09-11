@@ -99,19 +99,30 @@ test('panes can be hidden while reading, and Escape brings them back', async ({ 
   await expect(page.locator('.story-row').first().locator('h2 a')).toBeFocused();
 });
 
-test('the toolbar hides the comments and the story list', async ({ page }, testInfo) => {
+test('the pane switch turns each pane on and off', async ({ page }, testInfo) => {
   desktopOnly(testInfo);
   await mockAPI(page);
   await mockReader(page);
   await page.goto('/item?id=1&feed=top&article=1');
-  await page.getByRole('link', { name: 'Hide comments' }).click();
+  const panes = page.getByRole('group', { name: 'Panes' });
+  const comments = panes.getByRole('button', { name: 'Comments' });
+  const list = panes.getByRole('button', { name: 'List' });
+
+  await comments.click();
   await expect(page.locator('.discussion-column')).toBeHidden();
-  await page.getByRole('link', { name: 'Show comments' }).click();
+  await expect(comments).toHaveAttribute('aria-pressed', 'false');
+  await comments.click();
   await expect(page.locator('.discussion-column')).toBeVisible();
-  await page.getByRole('link', { name: 'Hide list' }).click();
+  await list.click();
   await expect(page.locator('.feed-column')).toBeHidden();
-  await page.getByRole('link', { name: 'Show list' }).click();
+  await expect(list).toHaveAttribute('aria-pressed', 'false');
+  await list.click();
   await expect(page.locator('.feed-column')).toBeVisible();
+
+  const article = panes.getByRole('button', { name: 'Article' });
+  await article.click();
+  await expect(page.locator('.article-column')).toBeHidden();
+  await expect(article).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('hiding the feed heading moves refresh to the top bar', async ({ page }) => {
@@ -207,7 +218,7 @@ test('a phone is offered no pane controls', async ({ page }, testInfo) => {
   await mockReader(page);
   await page.goto('/item?id=1&feed=top&article=1');
   await expect(page.locator('.pane-focus')).toBeHidden();
-  await expect(page.locator('.pane-comments')).toBeHidden();
+  await expect(page.locator('.pane-switch')).toBeHidden();
   await page.keyboard.press('z');
   await expect(page.locator('.article-panel')).toBeVisible();
 });
