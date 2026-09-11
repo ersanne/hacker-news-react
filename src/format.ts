@@ -31,6 +31,21 @@ function clean(value: string, tags: string[], attributes: string[], transform?: 
   transform?.(template.content);
   return template.innerHTML;
 }
+const BLOCKS = new Set(['P', 'PRE', 'BLOCKQUOTE', 'UL', 'OL']);
+// HN opens a comment with bare text and only starts a <p> at the first blank
+// line, so the opening block is wrapped to give it the paragraph the rest of
+// the passes — and the paragraph spacing — expect every block to have.
+function wrapLeadingBlock(root: ParentNode) {
+  const leading: Node[] = [];
+  for (const node of root.childNodes) {
+    if (node.nodeType === Node.ELEMENT_NODE && BLOCKS.has((node as Element).tagName)) break;
+    leading.push(node);
+  }
+  if (!leading.some(node => (node.textContent ?? '').trim())) return;
+  const paragraph = document.createElement('p');
+  root.insertBefore(paragraph, leading[0]);
+  paragraph.append(...leading);
+}
 // HN marks quoted text with a leading ">" in the paragraph itself, so the
 // markers are lifted into real blockquotes and adjacent quoted lines join up.
 function liftQuotes(root: ParentNode) {
@@ -48,7 +63,10 @@ function liftQuotes(root: ParentNode) {
   }
 }
 export function sanitize(value: string) {
-  return clean(value, COMMENT_TAGS, ['href', 'title'], liftQuotes);
+  return clean(value, COMMENT_TAGS, ['href', 'title'], root => {
+    wrapLeadingBlock(root);
+    liftQuotes(root);
+  });
 }
 // Extracted article markdown renders headings, images and tables that comment
 // HTML never contains, so it gets its own wider allowlist.

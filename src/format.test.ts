@@ -9,6 +9,15 @@ describe('untrusted HN content', () => {
     expect(html).toContain('href="https://example.com"');
     expect(html).not.toMatch(/script|onerror|onclick|<img/);
   });
+  it('gives the opening block of a comment the paragraph HN leaves off', () => {
+    expect(sanitize('First line<p>Second line')).toBe('<p>First line</p><p>Second line</p>');
+    expect(sanitize('Text with <i>markup</i><p>Second')).toBe('<p>Text with <i>markup</i></p><p>Second</p>');
+    expect(sanitize('<p>Already a paragraph')).toBe('<p>Already a paragraph</p>');
+    expect(sanitize('<pre><code>code first</code></pre><p>After')).toBe('<pre><code>code first</code></pre><p>After</p>');
+  });
+  it('lifts a quote that opens a comment, where HN writes no paragraph at all', () => {
+    expect(sanitize('&gt; quoted<p>A reply')).toBe('<blockquote><p>quoted</p></blockquote><p>A reply</p>');
+  });
   it('turns the plain-text quote markers HN uses into blockquotes', () => {
     const html = sanitize('<p>&gt; first line</p><p>&gt; second line</p><p>A reply</p>');
     expect(html).toBe('<blockquote><p>first line</p><p>second line</p></blockquote><p>A reply</p>');

@@ -26,7 +26,9 @@ for (let id = 1; id <= 65; id++) fixtureItems[id] = {
 };
 for (let id = 100; id < 125; id++) fixtureItems[id] = {
   id, type: 'comment', by: id === 100 ? 'simonw' : `reader${id}`, time: Math.floor(Date.now() / 1000) - 1800,
-  text: id === 100 ? '<p>The best tools are the ones that give you room to think. There’s something to be said for software that does one thing, thoughtfully, and gets out of your way.</p><p>I keep coming back to this idea: maintenance is a design decision, not an afterthought.</p>' : `<p>Comment ${id}. I’ve found that the small details make the biggest difference over time. A thoughtful perspective and a good discussion.</p>`,
+  // HN opens a comment with bare text and writes an unclosed <p> at each blank
+  // line, so the first comment carries the shape the API actually returns.
+  text: id === 100 ? 'The best tools are the ones that give you room to think. There’s something to be said for software that does one thing, thoughtfully, and gets out of your way.<p>I keep coming back to this idea: maintenance is a design decision, not an afterthought.' : `<p>Comment ${id}. I’ve found that the small details make the biggest difference over time. A thoughtful perspective and a good discussion.</p>`,
   kids: id === 100 ? [1000] : undefined,
 };
 fixtureItems[1000] = { id: 1000, type: 'comment', by: 'ada', text: '<p>A nested reply worth reading.</p>', kids: [2000] };
