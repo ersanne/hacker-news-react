@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ago, archiveUrl, domain, faviconUrl, hnUrl, sanitize } from '../format';
 
-export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus'; size?: number }) {
+export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus' | 'share'; size?: number }) {
   const paths = {
     arrow: <><path d="M7 17 17 7M7 7h10v10" /></>,
     back: <><path d="m12 5-7 7 7 7M5 12h14" /></>,
@@ -15,6 +15,7 @@ export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' |
     star: <path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8Z" />,
     reader: <><path d="M4 5h16v14H4z" /><path d="M7 9h10M7 12.5h10M7 16h6" /></>,
     embed: <><path d="M3 5h18v14H3z" /><path d="M3 9h18" /><path d="M6 7h.01M9 7h.01" /></>,
+    share: <><path d="M12 15V4m0 0L8.5 7.5M12 4l3.5 3.5" /><path d="M5 13v6h14v-6" /></>,
     sliders: <><path d="M4 7h10m4 0h2M4 17h4m4 0h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
     focus: <><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" /></>,
     help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.7-.7 1.3v.3" /><path d="M12 17h.01" /></>,
@@ -39,10 +40,44 @@ export function SaveButton({ saved, onToggle, title, className = '' }: { saved: 
     aria-label={`${saved ? 'Remove' : 'Save'} ${title}`} title={saved ? 'Remove from saved' : 'Save story'}
     onClick={event => { event.preventDefault(); event.stopPropagation(); onToggle(); }}><Icon name="star" size={14} /></button>;
 }
+type ShareState = 'idle' | 'copied' | 'failed';
+const canShare = typeof navigator.share === 'function';
+
+// The system share sheet where there is one, the clipboard everywhere else.
+async function shareLink(url: string, title: string): Promise<ShareState> {
+  if (navigator.share) {
+    // A dismissed sheet is a choice; any other failure still has the clipboard.
+    try { await navigator.share({ title, url }); return 'idle'; }
+    catch (error) { if ((error as Error).name === 'AbortError') return 'idle'; }
+  }
+  try { await navigator.clipboard.writeText(url); return 'copied'; }
+  catch { return 'failed'; }
+}
+// The outcome shows in the control that was pressed, then clears itself.
+function useShare(): [ShareState, (url: string, title: string) => void] {
+  const [state, setState] = useState<ShareState>('idle');
+  useEffect(() => {
+    if (state === 'idle') return;
+    const timer = setTimeout(() => setState('idle'), 2500);
+    return () => clearTimeout(timer);
+  }, [state]);
+  return [state, (url, title) => void shareLink(url, title).then(setState)];
+}
+function shareLabel(state: ShareState, idle: string) {
+  return state === 'copied' ? 'Link copied' : state === 'failed' ? 'Copy failed' : idle;
+}
+export function ShareButton({ url, title, className = '' }: { url: string; title: string; className?: string }) {
+  const [state, share] = useShare();
+  return <button type="button" className={`share-button ${className}`} data-state={state}
+    title="Share this story" onClick={() => share(url, title)}>
+    <Icon name="share" size={14} /><span role="status">{shareLabel(state, 'Share')}</span>
+  </button>;
+}
 // Every way out of the app lives behind one menu, so a story offers a single
 // primary action and one place that lists the rest.
-export function OpenIn({ url, id }: { url?: string; id: number }) {
+export function OpenIn({ url, id, title = '' }: { url?: string; id: number; title?: string }) {
   const box = useRef<HTMLDetailsElement>(null);
+  const [state, share] = useShare();
   useEffect(() => {
     function away(event: PointerEvent) {
       if (box.current?.open && !box.current.contains(event.target as Node)) box.current.open = false;
@@ -57,6 +92,11 @@ export function OpenIn({ url, id }: { url?: string; id: number }) {
       {url && <ExternalLink href={url}>Original <Icon name="arrow" size={12} /></ExternalLink>}
       {url && <ExternalLink href={archiveUrl(url)}><Icon name="archive" size={12} /> archive.is</ExternalLink>}
       <ExternalLink href={hnUrl(id)}>HN discussion <Icon name="arrow" size={12} /></ExternalLink>
+      {/* Clicking the link keeps the menu open, so its own result is visible. */}
+      {url && <button type="button" className="share-original" data-state={state}
+        onClick={event => { event.stopPropagation(); share(url, title); }}>
+        <Icon name="share" size={12} /><span role="status">{shareLabel(state, canShare ? 'Share original link' : 'Copy original link')}</span>
+      </button>}
     </div>
   </details>;
 }

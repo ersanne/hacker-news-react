@@ -30,7 +30,9 @@ test('the article pane renders extracted text and switches to an embed', async (
   await expect(page.getByRole('region', { name: 'Article', exact: true }).locator('iframe')).toBeVisible();
 });
 
-test('one menu lists every way out of the app', async ({ page }) => {
+test('one menu lists every way out of the app', async ({ page, context }) => {
+  // Chromium exposes no share sheet, so the menu item takes its clipboard path.
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await mockAPI(page);
   await mockReader(page);
   await page.goto('/item?id=1&feed=top&article=1');
@@ -45,6 +47,11 @@ test('one menu lists every way out of the app', async ({ page }) => {
   await expect(discussion.getByRole('link', { name: /^Read/ })).toHaveAttribute('href', /article=1/);
   await discussion.locator('.open-in summary').click();
   await expect(discussion.getByRole('link', { name: /archive\.is/ })).toHaveAttribute('href', `https://archive.is/newest/${story}`);
+
+  const copy = discussion.locator('.share-original');
+  await copy.click();
+  await expect(copy).toHaveText('Link copied');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(story);
 });
 
 test('a failed extraction can be retried, and text-only stories say so', async ({ page }) => {

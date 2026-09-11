@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getComments, getItem, type Comment, type HNItem } from '../api';
-import { domain, hnUrl, plainTitle, safeUrl } from '../format';
-import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, RichText, SaveButton, Skeleton, Time } from './ui';
+import { domain, hnUrl, plainTitle, safeUrl, shareUrl } from '../format';
+import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, RichText, SaveButton, ShareButton, Skeleton, Time } from './ui';
 
 // Item ids are handed out in order, so they sort by age.
 type Order = 'hn' | 'newest' | 'oldest';
@@ -89,6 +89,7 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
         <span className="pane-tab" aria-current="page"><Icon name="comment" size={14} />Comments</span>
       </div>
       <div className="discussion-actions">
+        <ShareButton url={shareUrl(id)} title={plainTitle(item?.title)} />
         <SaveButton saved={saved} onToggle={onToggleSaved} title={plainTitle(item?.title)} className="with-label" />
       </div>
     </div>
@@ -100,7 +101,7 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
           {!showArticle && <div className="eyebrow article-source">{url && <Favicon url={url} />}{url ? domain(url) : 'FROM THE COMMUNITY'}</div>}
           <h2 ref={heading} tabIndex={-1}>{plainTitle(item.title)}</h2>
           <div className="article-meta"><span className="score"><span aria-hidden="true">▴</span> {item.score ?? 0} points</span><span className="meta-dot">·</span><span>by <Author name={item.by} /></span><span className="meta-dot">·</span><Time value={item.time} /><span className="meta-dot">·</span><span>{item.descendants ?? 0} comments</span></div>
-          {!showArticle && <div className="article-links">{url && <Link to={articleTo} className="article-link">Read <Icon name="reader" size={16} /></Link>}<OpenIn url={url} id={id} /></div>}
+          {!showArticle && <div className="article-links">{url && <Link to={articleTo} className="article-link">Read <Icon name="reader" size={16} /></Link>}<OpenIn url={url} id={id} title={plainTitle(item.title)} /></div>}
         </header>
         {item.text && <div className="story-body"><RichText text={item.text} /></div>}
         {!supported ? <div className="small-empty"><p>Continue reading this item on Hacker News.</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div>{commentsError ? <Failure retry={() => setCommentsAttempt(commentsAttempt + 1)}>Couldn’t load the comments. A story posted in the last few minutes may not be searchable yet.</Failure> : !comments ? <Skeleton rows={3} /> : threads.length ? <CommentBatch key={order} comments={threads} /> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}

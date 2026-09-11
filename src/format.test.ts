@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archiveUrl, domain, plainTitle, readingTime, safeUrl, sanitize, sanitizeArticle } from './format';
+import { archiveUrl, domain, plainTitle, readingTime, safeUrl, sanitize, sanitizeArticle, shareUrl } from './format';
 
 describe('untrusted HN content', () => {
   it('preserves readable formatting while stripping scripts, handlers, and unsafe links', () => {
@@ -32,6 +32,9 @@ describe('untrusted HN content', () => {
   it('estimates reading time from the word count, never below a minute', () => {
     expect(readingTime('word '.repeat(440))).toBe('2 min read');
     expect(readingTime('short')).toBe('1 min read');
+  });
+  it('shares an absolute reader link to the story alone', () => {
+    expect(shareUrl(42)).toBe(`${window.location.origin}/item?id=42`);
   });
   it('points archive links at the newest snapshot of the article', () => {
     expect(archiveUrl('https://example.com/a?b=c')).toBe('https://archive.is/newest/https://example.com/a?b=c');

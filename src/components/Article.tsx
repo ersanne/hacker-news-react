@@ -76,7 +76,7 @@ export default function Article({ id, active, shown, backTo, commentsTo }: {
           <button type="button" aria-pressed={mode === 'reader'} onClick={() => choose('reader')}><Icon name="reader" size={13} /><span className="mode-label">Reader</span></button>
           <button type="button" aria-pressed={mode === 'embed'} onClick={() => choose('embed')}><Icon name="embed" size={13} /><span className="mode-label">Embed</span></button>
         </div>}
-        <OpenIn url={url} id={id} />
+        <OpenIn url={url} id={id} title={title} />
       </div>
     </div>
     <div className="article-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>

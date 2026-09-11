@@ -255,8 +255,10 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .open-in summary:hover { background: var(--hover); }
 .open-in[open] summary { background: var(--hover); }
 .open-in-menu { position: absolute; z-index: 5; right: 0; top: calc(100% + 6px); min-width: 170px; display: flex; flex-direction: column; padding: 5px; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 10px 26px #0000001f; }
-.open-in-menu a { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 5px; font-size: 12px; color: var(--text); }
-.open-in-menu a:hover { background: var(--hover); color: var(--text); }
+.open-in-menu a, .open-in-menu button { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 5px; font-size: 12px; color: var(--text); }
+.open-in-menu a:hover, .open-in-menu button:hover { background: var(--hover); color: var(--text); }
+.open-in-menu button { width: 100%; background: transparent; border: 0; font-family: inherit; text-align: left; border-top: 1px solid var(--line); border-radius: 0 0 5px 5px; margin-top: 4px; }
+.open-in-menu button[data-state="copied"] { color: var(--accent); }
 .pane-tabs { display: none; gap: 4px; }
 .pane-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 5px; font-size: 11px; color: var(--muted); }
 .pane-tab:hover { background: var(--hover); }
@@ -268,6 +270,9 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .save-button.is-saved { color: var(--accent); }
 .save-button.is-saved svg { fill: currentColor; }
 .save-button.with-label { padding: 6px 8px; }
+.share-button { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 0; padding: 6px 8px; border-radius: 4px; font: inherit; color: var(--subtle); }
+.share-button:hover { color: var(--accent); background: var(--hover); }
+.share-button[data-state="copied"] { color: var(--accent); }
 .hide-read { display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0; font-size: 10px; color: var(--subtle); cursor: pointer; }
 .hide-read input { accent-color: var(--accent); margin: 0; }
 .sheet { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 0; max-width: 420px; width: calc(100% - 32px); max-height: calc(100dvh - 32px); }
