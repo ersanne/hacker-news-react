@@ -23,6 +23,7 @@ Vite prints the local URL. No API keys, environment variables, or backend are re
 - Discussions beside the feed on desktop; a separate discussion screen below 1,024px.
 - Read indicators, preserved feed scroll, and browser Back/Forward navigation.
 - Comments in HN order, 20 per batch, with replies fetched on expansion and collapsible threads.
+- Keyboard shortcuts: `j` and `k` move through the list, `Enter` opens a discussion, `o` opens the original article, `Escape` returns to the list, and `/` focuses search.
 - System, light, and dark themes; locally hosted DM Sans and Newsreader fonts.
 - Direct links such as `/item?id=8863&feed=top`, including compatibility with the old `/item?id=…` route.
 
@@ -39,11 +40,11 @@ npm run build
 npm run preview
 ```
 
-Vitest covers the request cache, concurrency, ordering, failed requests, search-result mapping, and untrusted HTML. Playwright runs deterministic API fixtures on desktop Chromium and an emulated phone, covering reading, navigation, pagination, search, themes, partial failures, and deep threads. Screenshots and traces for failed tests are saved under `test-results/`.
+Vitest covers the request cache, concurrency, ordering, failed requests, search-result mapping, and untrusted HTML. Playwright runs deterministic API fixtures on desktop Chromium and an emulated phone, covering reading, navigation, pagination, search, shortcuts, themes, partial failures, and deep threads. Screenshots and traces for failed tests are saved under `test-results/`.
 
 ## Structure and data
 
-`src/App.tsx` owns URL selection, theme, and the visited feed/discussion views. Components handle feed browsing, search results, and progressive comments; both story lists render through `src/components/StoryList.tsx`. `src/api.ts` centralizes requests to the [official Hacker News API](https://github.com/HackerNews/API) and to the [HN Algolia search API](https://hn.algolia.com/api), which supplies every field a result row shows, so results are not refetched story by story.
+`src/App.tsx` owns URL selection, theme, shortcuts, and the visited feed/discussion views. Components handle feed browsing, search results, and progressive comments; both story lists render through `src/components/StoryList.tsx`. `src/api.ts` centralizes requests to the [official Hacker News API](https://github.com/HackerNews/API) and to the [HN Algolia search API](https://hn.algolia.com/api), which supplies every field a result row shows, so results are not refetched story by story.
 
 The client keeps a five-minute response cache, deduplicates concurrent requests, limits requests to eight at once, and times out stalled requests after 15 seconds. Refresh clears the data cache and reloads the current feed; stories do not reorder automatically. Up to ten recent discussions remain mounted to retain expanded threads and reading position. Feeds remain available for the current session.
 

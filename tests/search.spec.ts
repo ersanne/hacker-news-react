@@ -51,3 +51,36 @@ test('a failed search recovers on retry', async ({ page }) => {
   await failure.getByRole('button', { name: 'Try again' }).click();
   await expect(page.locator('.feed-panel:not([hidden]) .story-row')).toHaveCount(7);
 });
+
+test('shortcuts move through stories, open discussions, and focus search', async ({ page }) => {
+  await mockAPI(page);
+  await mockSearch(page);
+  await page.goto('/');
+  const rows = page.locator('.feed-panel:not([hidden]) .story-row h2 a');
+  await expect(rows.first()).toBeVisible();
+  await page.keyboard.press('j');
+  await expect(rows.nth(0)).toBeFocused();
+  await page.keyboard.press('j');
+  await expect(rows.nth(1)).toBeFocused();
+  await page.keyboard.press('k');
+  await expect(rows.nth(0)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('region', { name: 'Discussion', exact: true }).getByRole('heading').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL('/?feed=top');
+  await expect(rows.nth(0)).toBeFocused();
+
+  const [article] = await Promise.all([page.context().waitForEvent('page'), page.keyboard.press('o')]);
+  await expect(rows.nth(0)).toBeFocused();
+  expect(article.url()).toBe('https://maggieappleton.com/story/1');
+  await article.close();
+
+  await page.keyboard.press('/');
+  const input = page.getByLabel('Search Hacker News stories');
+  await expect(input).toBeFocused();
+  await input.fill('unix philosophy');
+  // A search input clears itself on Escape; the shortcut only returns focus to the page.
+  await page.keyboard.press('Escape');
+  await expect(input).not.toBeFocused();
+  await expect(input).toHaveValue('');
+});

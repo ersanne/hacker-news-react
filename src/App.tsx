@@ -5,6 +5,7 @@ import FeedPanel from './components/FeedPanel';
 import SearchPanel from './components/SearchPanel';
 import Discussion, { EmptyDiscussion } from './components/Discussion';
 import { Icon } from './components/ui';
+import { useKeyboardShortcuts } from './keyboard';
 import { readStorage, useReadStories, writeStorage } from './storage';
 
 type Theme = 'system' | 'light' | 'dark';
@@ -27,6 +28,7 @@ export default function App() {
     const saved = readStorage('hn-theme');
     return saved === 'light' || saved === 'dark' ? saved : 'system';
   });
+  useKeyboardShortcuts({ selected, backTo, search: searchInput });
   useEffect(() => {
     if (!search) setVisited(previous => previous.includes(feed) ? previous : [...previous, feed]);
   }, [feed, search]);
