@@ -83,7 +83,7 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
   const supported = !item?.type || ['story', 'job'].includes(item.type);
   return <section className="discussion-panel" hidden={!active} aria-label="Discussion">
     <div className="discussion-toolbar">
-      <Link to={backTo} className="back-link"><Icon name="back" size={16} /><span>Back to stories</span></Link>
+      <Link to={backTo} className="back-link" aria-label="Back to stories"><Icon name="back" size={16} /><span>Back to stories</span></Link>
       <div className="pane-tabs">
         <Link to={articleTo} className="pane-tab"><Icon name="reader" size={14} />Article</Link>
         <span className="pane-tab" aria-current="page"><Icon name="comment" size={14} />Comments</span>

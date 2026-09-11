@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { clearCache, feeds, type Feed } from './api';
 import Article from './components/Article';
@@ -17,6 +17,21 @@ type Theme = 'system' | 'light' | 'dark';
 type View = Feed | 'saved';
 const views: View[] = [...feeds, 'saved'];
 const tabLabels: Record<Feed, string> = { top: 'Top', new: 'New', best: 'Best', ask: 'Ask HN', show: 'Show HN' };
+// Below this width the reading panes are exclusive rather than side by side
+// (styles.css draws the same line), so the article is a view to leave rather
+// than an arrangement to carry back to the list.
+const SINGLE_PANE = '(max-width: 1399px)';
+
+function useMediaQuery(query: string) {
+  const list = useMemo(() => window.matchMedia(query), [query]);
+  return useSyncExternalStore(
+    onChange => {
+      list.addEventListener('change', onChange);
+      return () => list.removeEventListener('change', onChange);
+    },
+    () => list.matches,
+  );
+}
 
 export default function App() {
   const location = useLocation();
@@ -28,7 +43,8 @@ export default function App() {
   const selected = location.pathname === '/item' && rawId && /^\d+$/.test(rawId) && Number.isSafeInteger(Number(rawId)) && Number(rawId) > 0 ? Number(rawId) : null;
   const invalid = location.pathname !== '/' && (location.pathname !== '/item' || !selected);
   const showArticle = query.get('article') === '1';
-  const suffix = showArticle ? '&article=1' : '';
+  const singlePane = useMediaQuery(SINGLE_PANE);
+  const suffix = showArticle && !singlePane ? '&article=1' : '';
   const panes = new Set((query.get('panes') ?? '').split(',').filter(Boolean));
   // A pane can only be dropped while a story is open, and never the last one
   // left: hiding the comments is offered alongside the article, not instead of it.
@@ -141,7 +157,7 @@ export default function App() {
   return <SettingsProvider value={settings}><div className="app-shell" data-width={settings.width} data-density={settings.density} data-order={settings.order}>
     <a className="skip-link" href="#reader">Skip to reader</a>
     <header className="app-header">
-      <Link className="brand" to="/" aria-label="HN Reader home"><span className="brand-mark">Y</span><span>hn<span className="brand-light">reader</span><span className="brand-period">.</span></span></Link>
+      <Link className="brand" to="/" aria-label="HN Reader home"><span className="brand-mark">Y</span><span className="brand-word">hn<span className="brand-light">reader</span><span className="brand-period">.</span></span></Link>
       <span className="header-tagline">A quieter corner of Hacker News.</span>
       <div className="header-tools">
         <form className="search-form" role="search" onSubmit={submitSearch}><Icon name="search" size={14} /><input key={search} ref={searchInput} type="search" name="q" defaultValue={search} maxLength={200} placeholder="Search stories" aria-label="Search Hacker News stories" aria-keyshortcuts="/" />{search && <button type="button" className="text-button clear-search" onClick={() => void navigate(`/?feed=${view}${suffix}`)}>Clear</button>}</form>
@@ -156,7 +172,7 @@ export default function App() {
         <div className="theme-control">
           {!settings.heading && <button type="button" className={`icon-button refresh ${refreshing ? 'is-loading' : ''}`} aria-label="Refresh stories" title="Refresh stories" disabled={refreshing} onClick={refreshNow}><Icon name="refresh" size={16} /></button>}
           <button type="button" className="icon-button" aria-label="View settings" title="View settings" onClick={() => setSettingsOpen(true)}><Icon name="sliders" size={16} /></button>
-          <button type="button" className="icon-button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={openHelp}><Icon name="help" size={16} /></button>
+          <button type="button" className="icon-button header-help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={openHelp}><Icon name="help" size={16} /></button>
           <Icon name="sun" size={16} />
           <select aria-label="Color theme" value={theme} onChange={event => setTheme(event.target.value as Theme)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
         </div>
@@ -170,7 +186,7 @@ export default function App() {
         <SavedPanel active={!search && view === 'saved'} {...listProps} />
         {search && <SearchPanel key={search} query={search} active hideRead={hideRead} onHideRead={changeHideRead} {...listProps} {...feedProps} />}
       </div>
-      <div className="article-column">{opened.map(id => <Article key={id} id={id} active={id === selected} backTo={backTo} commentsTo={commentsTo} />)}</div>
+      <div className="article-column">{opened.map(id => <Article key={id} id={id} active={id === selected} shown={showArticle} backTo={backTo} commentsTo={commentsTo} />)}</div>
       <div className="discussion-column">{invalid ? <div className="invalid-route"><h1>Nothing to read here.</h1><p>This link doesn’t point to a valid story.</p><Link to="/">Back to the front page</Link></div> : <>{!selected && <EmptyDiscussion />}{opened.map(id => <Discussion key={id} id={id} backTo={backTo} active={id === selected} articleTo={articleTo} showArticle={showArticle} saved={saved.has(id)} onToggleSaved={() => toggleSaved(id)} />)}</>}</div>
     </main>
     <ViewSettings open={settingsOpen} settings={settings} onChange={updateSettings} onClose={() => setSettingsOpen(false)}

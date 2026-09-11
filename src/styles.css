@@ -52,7 +52,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .skip-link { position: fixed; top: -60px; left: 16px; z-index: 10; background: var(--surface); padding: 12px; }
 .skip-link:focus { top: 8px; }
-.app-shell { max-width: var(--shell-max, 1760px); height: 100dvh; min-height: 420px; margin: 0 auto; display: flex; flex-direction: column; background: var(--surface); border-inline: 1px solid var(--line); }
+.app-shell { max-width: var(--shell-max, 1760px); height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; background: var(--surface); border-inline: 1px solid var(--line); }
 .app-header { display: flex; align-items: center; gap: 22px; padding: 0 28px; min-height: 62px; border-bottom: 1px solid var(--line); }
 .brand { display: flex; gap: 10px; align-items: center; font-size: 22px; font-weight: 700; letter-spacing: -1.1px; color: var(--text); }
 .brand-mark { width: 29px; height: 31px; border-radius: 8px; display: grid; place-items: center; background: #bd512e; color: #fffaf2; font-family: var(--serif); font-size: 21px; font-weight: 400; }
@@ -244,7 +244,9 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .embed-note a { color: var(--accent); }
 .mode-switch { display: flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
 .mode-switch button { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 0; padding: 7px 11px; font-size: 10px; color: var(--muted); }
+.mode-switch button { position: relative; }
 .mode-switch button + button { border-left: 1px solid var(--line); }
+.mode-label { display: inline; }
 .mode-switch button:hover { background: var(--hover); }
 .mode-switch button[aria-pressed='true'] { background: var(--selected); color: var(--text); font-weight: 600; }
 .open-in { position: relative; }
@@ -268,12 +270,14 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .save-button.with-label { padding: 6px 8px; }
 .hide-read { display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0; font-size: 10px; color: var(--subtle); cursor: pointer; }
 .hide-read input { accent-color: var(--accent); margin: 0; }
-.sheet { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 0; max-width: 420px; width: calc(100% - 32px); }
+.sheet { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 0; max-width: 420px; width: calc(100% - 32px); max-height: calc(100dvh - 32px); }
+.sheet[open] { display: flex; flex-direction: column; }
+.sheet-inner { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
 .sheet::backdrop { background: #00000055; }
-.sheet-inner { padding: 26px 28px 22px; }
+.sheet-inner { padding: 26px 28px 0; }
 .sheet h2 { font-family: var(--serif); font-weight: 450; font-size: 22px; margin: 0 0 18px; }
 .view-settings { max-width: 520px; }
-.shortcuts dl { margin: 0 0 22px; display: grid; gap: 9px; }
+.shortcuts dl { margin: 0; display: grid; gap: 9px; }
 .shortcuts dl > div { display: flex; align-items: baseline; gap: 14px; }
 .shortcuts dt { min-width: 66px; }
 .shortcuts dd { margin: 0; font-size: 12px; color: var(--muted); }
@@ -285,7 +289,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .setting select { background: transparent; border: 1px solid var(--line); border-radius: 5px; color: var(--text); padding: 7px 9px; font-size: 11px; cursor: pointer; }
 .setting option { background: var(--surface); }
 .setting .mode-switch { flex-shrink: 0; }
-.sheet-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 20px; }
+.sheet-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 20px; position: sticky; bottom: 0; padding-bottom: 22px; background: var(--surface); }
 
 .app-shell[data-width='wide'] { --shell-max: 2200px; }
 /* The side borders read as stray hairlines once the shell meets the viewport. */
@@ -352,10 +356,12 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   .reader.has-selection .discussion-column { display: block; }
   .reader.has-article .discussion-column { display: none; }
   .pane-back { display: inline-flex; }
-  .pane-back span { display: none; }
   .article-toolbar, .discussion-toolbar { flex-wrap: wrap; gap: 8px 12px; padding: 8px 20px; min-height: 0; }
   .article-toolbar > *, .discussion-toolbar > * { flex-shrink: 0; }
   .article-actions, .discussion-actions { gap: 12px; }
+  .mode-switch .mode-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+  .article-actions .mode-switch button { padding: 9px 13px; }
+  .pane-tab svg { display: none; }
   .article-inner { padding: 28px 26px 36px; }
   .feed-heading { padding: 20px 26px; }
   .story-row { padding: 15px 26px; gap: 14px; }
@@ -374,9 +380,12 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   .story-domain a { min-height: 24px; }
   .comment-count { min-height: 28px; }
   .icon-button { width: 44px; height: 44px; }
+  /* The star is the one row control a thumb has to hit. */
+  .story-star { top: 0; right: 2px; width: 44px; height: 44px; padding: 0; justify-content: center; }
   .setting { flex-wrap: wrap; gap: 12px; }
-  /* A single pane fills the screen, so there is no arrangement to change. */
-  .pane-switch, .pane-focus { display: none; }
+  /* A single pane fills the screen, so there is no arrangement to change and
+     no shell width to trade against it. */
+  .pane-switch, .pane-focus, .setting.wide-only { display: none; }
 }
 @media (max-width: 580px) {
   .app-header { min-height: 69px; padding-inline: 20px; }
@@ -397,7 +406,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   .story-meta { gap: 6px; font-size: 10px; }
   .story-meta > a:not(.comment-count) { max-width: 90px; }
   .feed-footer { padding-inline: 22px; }
-  .discussion-toolbar { padding-inline: 20px; }
+  .article-toolbar, .discussion-toolbar { padding-inline: 16px; }
   .discussion-inner { padding: 29px 22px 20px; }
   .article-heading h2 { font-size: 32px; }
   .article-meta { font-size: 10px; gap: 8px 12px; }
@@ -406,6 +415,23 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   .comment-header { gap: 6px; }
   .prose { font-size: 13px; }
   .discussion-end { line-height: 1.8; }
+  .back-link span { display: none; }
+  .discussion-label { flex-wrap: wrap; }
+  .brand-word, .theme-control > svg { display: none; }
+}
+/* Narrow enough that the feed tabs and the search field compete for the row. */
+@media (max-width: 380px) {
+  .app-header, .feed-nav, .list-caption { padding-inline: 14px; }
+  .header-tools { gap: 6px; }
+  .feed-tabs { gap: 0 8px; }
+  .feed-tabs > a { font-size: 11px; }
+  .tab-star { display: none; }
+  .story-row { padding-inline: 14px 14px; }
+  .feed-heading, .feed-footer { padding-inline: 14px; }
+  .discussion-inner, .article-inner { padding-inline: 16px; }
+  /* Too narrow for one row, so the actions take a full one rather than
+     wrapping to a ragged tail beside the tabs. */
+  .article-actions { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
@@ -420,9 +446,21 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   .search-form input { width: 128px; }
 }
 @media (max-width: 899px) {
-  .app-header { flex-wrap: wrap; padding-block: 10px; }
-  .header-tools { width: 100%; margin-left: 0; gap: 10px; }
-  .search-form { flex: 1; }
-  .search-form input { width: 100%; }
-  .theme-control { margin-left: auto; }
+  /* One row of header: a second costs more screen than the shortcut list is
+     worth on a touch device, and the settings sheet still links to it. */
+  .app-header { gap: 12px; min-height: 58px; }
+  .header-tools { flex: 1; gap: 8px; }
+  .header-help { display: none; }
+  .search-form { flex: 1; min-width: 0; padding-inline: 12px; }
+  .search-form input { width: 100%; min-width: 0; }
+}
+/* A phone on its side has more width than height, and the chrome has to give. */
+@media (max-height: 500px) and (max-width: 1023px) {
+  .app-header { min-height: 50px; }
+  .feed-nav { min-height: 42px; }
+  .feed-heading { padding-block: 10px; }
+  .feed-heading h1 { font-size: 21px; }
+  .feed-heading p { display: none; }
+  .empty-discussion { min-height: 0; padding-block: 24px; }
+  .discussion-inner, .article-inner { padding-top: 18px; }
 }

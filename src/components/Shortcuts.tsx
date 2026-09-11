@@ -33,7 +33,7 @@ export default function Shortcuts({ open, onClose }: { open: boolean; onClose: (
     <div className="sheet-inner">
       <h2 id="shortcuts-title">Keyboard shortcuts</h2>
       <dl>{keys.map(([key, description]) => <div key={description}><dt><kbd>{key}</kbd></dt><dd>{description}</dd></div>)}</dl>
-      <button type="button" className="secondary-button" onClick={onClose}>Close <kbd>Esc</kbd></button>
+      <div className="sheet-actions"><button type="button" className="secondary-button" onClick={onClose}>Close <kbd>Esc</kbd></button></div>
     </div>
   </dialog>;
 }

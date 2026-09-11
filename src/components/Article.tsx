@@ -36,21 +36,26 @@ function Reader({ url }: { url: string }) {
   </>;
 }
 
-export default function Article({ id, active, backTo, commentsTo }: {
-  id: number; active: boolean; backTo: string; commentsTo: string;
+export default function Article({ id, active, shown, backTo, commentsTo }: {
+  id: number; active: boolean; shown: boolean; backTo: string; commentsTo: string;
 }) {
   const [item, setItem] = useState<HNItem | null>(null);
   const [busy, setBusy] = useState(true);
+  // The pane stays mounted to keep its scroll position and its extracted text,
+  // so the extraction and the embed wait for the pane to be on screen once.
+  const [revealed, setRevealed] = useState(false);
+  if (!revealed && active && shown) setRevealed(true);
   const [mode, setMode] = useState<Mode>(() => readStorage('hn-article-mode') === 'embed' ? 'embed' : 'reader');
   const scrolling = useRef<HTMLDivElement>(null);
   const scrollTop = useRef(0);
   useLayoutEffect(() => { if (active && scrolling.current) scrolling.current.scrollTop = scrollTop.current; }, [active]);
   useEffect(() => {
+    if (!revealed) return;
     let current = true;
     void getItem(id).then(result => { if (current) setItem(result); }).catch(() => { /* The discussion pane reports item failures. */ })
       .finally(() => { if (current) setBusy(false); });
     return () => { current = false; };
-  }, [id]);
+  }, [id, revealed]);
   function choose(next: Mode) {
     setMode(next);
     writeStorage('hn-article-mode', next);
@@ -58,6 +63,7 @@ export default function Article({ id, active, backTo, commentsTo }: {
 
   const url = safeUrl(item?.url);
   const title = plainTitle(item?.title);
+  if (!revealed) return <section className="article-panel" hidden aria-label="Article" />;
   return <section className="article-panel" hidden={!active} aria-label="Article">
     <div className="article-toolbar">
       <Link to={backTo} className="back-link pane-back" aria-label="Back to stories"><Icon name="back" size={16} /><span>Back to stories</span></Link>
@@ -67,8 +73,8 @@ export default function Article({ id, active, backTo, commentsTo }: {
       </div>
       <div className="article-actions">
         {url && <div className="mode-switch" role="group" aria-label="Article view">
-          <button type="button" aria-pressed={mode === 'reader'} onClick={() => choose('reader')}><Icon name="reader" size={13} />Reader</button>
-          <button type="button" aria-pressed={mode === 'embed'} onClick={() => choose('embed')}><Icon name="embed" size={13} />Embed</button>
+          <button type="button" aria-pressed={mode === 'reader'} onClick={() => choose('reader')}><Icon name="reader" size={13} /><span className="mode-label">Reader</span></button>
+          <button type="button" aria-pressed={mode === 'embed'} onClick={() => choose('embed')}><Icon name="embed" size={13} /><span className="mode-label">Embed</span></button>
         </div>}
         <OpenIn url={url} id={id} />
       </div>

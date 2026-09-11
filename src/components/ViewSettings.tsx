@@ -6,10 +6,10 @@ const orders: [Settings['order'], string][] = [['comments-first', 'Comments'], [
 const densities: [Settings['density'], string][] = [['comfortable', 'Comfortable'], ['compact', 'Compact']];
 const intervals: Settings['refresh'][] = [0, 1, 5, 15];
 
-function Choice<T extends string>({ label, hint, value, options, onChange }: {
-  label: string; hint: string; value: T; options: [T, string][]; onChange: (value: T) => void;
+function Choice<T extends string>({ label, hint, value, options, onChange, className = '' }: {
+  label: string; hint: string; value: T; options: [T, string][]; onChange: (value: T) => void; className?: string;
 }) {
-  return <div className="setting">
+  return <div className={`setting ${className}`}>
     <div><span className="setting-label">{label}</span><span className="setting-hint">{hint}</span></div>
     <div className="mode-switch" role="group" aria-label={label}>
       {options.map(([option, text]) => <button key={option} type="button" aria-pressed={value === option} onClick={() => onChange(option)}>{text}</button>)}
@@ -31,8 +31,8 @@ export default function ViewSettings({ open, settings, onChange, onClose, onShor
     onClick={event => { if (event.target === dialog.current) onClose(); }}>
     <div className="sheet-inner">
       <h2 id="view-settings-title">View settings</h2>
-      <Choice label="Width" hint="How much of the screen the reader uses." value={settings.width} options={widths} onChange={width => onChange({ width })} />
-      <Choice label="Middle column" hint="Which pane sits beside the story list." value={settings.order} options={orders} onChange={order => onChange({ order })} />
+      <Choice className="wide-only" label="Width" hint="How much of the screen the reader uses." value={settings.width} options={widths} onChange={width => onChange({ width })} />
+      <Choice className="wide-only" label="Middle column" hint="Which pane sits beside the story list." value={settings.order} options={orders} onChange={order => onChange({ order })} />
       <Choice label="Density" hint="Spacing in lists and conversations." value={settings.density} options={densities} onChange={density => onChange({ density })} />
       <div className="setting">
         <div><span className="setting-label">Feed heading</span><span className="setting-hint">The title above each list. Hiding it moves refresh to the top bar.</span></div>
