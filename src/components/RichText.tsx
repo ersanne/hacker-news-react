@@ -1,4 +1,4 @@
-import { createElement, memo, useMemo, useState, type ReactNode } from 'react';
+import { createElement, Fragment, memo, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { parseComment, type RichNode } from '../richtext';
 import { safeUrl } from '../format';
@@ -31,6 +31,23 @@ function CommentLink({ href, children }: { href: string; children: ReactNode }) 
   return <Link to={`/item?${params.toString()}`}>{children}</Link>;
 }
 
+// Marks are put in as React children, so what is marked stays text and the
+// sanitised tree is never rebuilt from a string to hold them.
+function marked(value: string, highlight: string, key: number): ReactNode {
+  const needle = highlight.toLowerCase();
+  const haystack = value.toLowerCase();
+  const parts: ReactNode[] = [];
+  let read = 0;
+  for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, read)) {
+    if (at > read) parts.push(value.slice(read, at));
+    parts.push(<mark key={parts.length}>{value.slice(at, at + needle.length)}</mark>);
+    read = at + needle.length;
+  }
+  if (!parts.length) return value;
+  if (read < value.length) parts.push(value.slice(read));
+  return <Fragment key={key}>{parts}</Fragment>;
+}
+
 function text(node: RichNode): string {
   return typeof node === 'string' ? node : node.children.map(text).join('');
 }
@@ -44,7 +61,7 @@ const FOLD_LINES = 15;
 
 // A block wide enough to scroll cannot hold its own controls: they would slide
 // out of reach with the code. The wrapper holds them still instead.
-function CodeBlock({ node }: { node: RichNode }) {
+function CodeBlock({ node, highlight }: { node: RichNode; highlight?: string }) {
   const code = text(node);
   const [state, copy] = useCopy();
   const wrap = useFlag(codeWrap);
@@ -62,17 +79,17 @@ function CodeBlock({ node }: { node: RichNode }) {
     </div>
     {/* A region that scrolls has to be reachable by the keyboard too. The fold
         is a visual clamp, so the text stays whole for anything reading it. */}
-    <pre tabIndex={0} role="region" aria-label="Code block">{typeof node === 'string' ? node : node.children.map(render)}</pre>
+    <pre tabIndex={0} role="region" aria-label="Code block">{typeof node === 'string' ? node : node.children.map((child, index) => render(child, index, highlight))}</pre>
     {lines > FOLD_LINES && <button type="button" className="text-button code-fold" aria-expanded={open} onClick={() => setOpen(!open)}>
       {open ? 'Show less' : `Show all ${lines} lines`}
     </button>}
   </div>;
 }
 
-function render(node: RichNode, key: number): ReactNode {
-  if (typeof node === 'string') return node;
-  const children = node.children.map(render);
-  if (node.tag === 'pre') return <CodeBlock key={key} node={node} />;
+function render(node: RichNode, key: number, highlight?: string): ReactNode {
+  if (typeof node === 'string') return highlight ? marked(node, highlight, key) : node;
+  const children = node.children.map((child, index) => render(child, index, highlight));
+  if (node.tag === 'pre') return <CodeBlock key={key} node={node} highlight={highlight} />;
   if (node.tag === 'a') {
     // Links are the one place a pass sets an attribute, so the href is checked
     // again here rather than trusted from the tree.
@@ -84,8 +101,8 @@ function render(node: RichNode, key: number): ReactNode {
 
 // A comment's tree is derived from text that never changes, so a node keeps
 // its position between renders and its index is a stable key.
-function RichText({ text }: { text: string }) {
+function RichText({ text, highlight }: { text: string; highlight?: string }) {
   const nodes = useMemo(() => parseComment(text), [text]);
-  return <div className="prose">{nodes.map(render)}</div>;
+  return <div className="prose">{nodes.map((node, index) => render(node, index, highlight))}</div>;
 }
 export default memo(RichText);

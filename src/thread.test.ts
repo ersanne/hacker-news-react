@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ancestorsOf, excerpt, indexThread, opensByDefault } from './thread';
+import { ancestorsOf, excerpt, findMatches, indexThread, opensByDefault } from './thread';
 import type { Comment } from './api';
 
 const comment = (id: number, kids: Comment[] = [], by = `user${id}`): Comment =>
@@ -48,5 +48,36 @@ describe('a discussion as a tree', () => {
   });
   it('reads an empty discussion as an empty index', () => {
     expect(indexThread([]).size).toBe(0);
+  });
+});
+
+describe('finding a comment in a discussion', () => {
+  it('returns matches in the order they are shown, from the thread rather than the page', () => {
+    const roots = [comment(1, [comment(2, [comment(3)])], 'ada'), comment(4, [], 'bob')];
+    roots[0].kids[0].text = '<p>Nothing here</p>';
+    expect(findMatches(roots, 'comment')).toEqual([1, 3, 4]);
+  });
+  it('matches the author as well as what they said', () => {
+    expect(findMatches([comment(1, [], 'ada'), comment(2, [], 'bob')], 'ada')).toEqual([1]);
+  });
+  it('ignores case, and a query too short to mean anything', () => {
+    const roots = [comment(1, [], 'ada')];
+    roots[0].text = '<p>Craftsmanship</p>';
+    expect(findMatches(roots, 'CRAFT')).toEqual([1]);
+    expect(findMatches(roots, 'c')).toEqual([]);
+    expect(findMatches(roots, '  ')).toEqual([]);
+  });
+  it('reads a comment as its text, so markup neither matches nor hides a match', () => {
+    const roots = [comment(1)];
+    roots[0].text = '<p>a <em>craft</em> worth learning</p>';
+    expect(findMatches(roots, 'em')).toEqual([]);
+    expect(findMatches(roots, 'craft')).toEqual([1]);
+    // A match split by markup is still counted, though it cannot be marked.
+    roots[0].text = '<p>cra<em>ft</em></p>';
+    expect(findMatches(roots, 'craft')).toEqual([1]);
+  });
+  it('finds nothing in a removed comment, which has nothing to say', () => {
+    const removed: Comment = { id: 2, removed: true, kids: [] };
+    expect(findMatches([removed], 'anything')).toEqual([]);
   });
 });

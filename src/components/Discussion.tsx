@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getComments, getItem, type Comment, type HNItem } from '../api';
 import { domain, hnUrl, plainTitle, safeUrl, shareUrl } from '../format';
-import { excerpt, FLAT_DEPTH, indexThread, opensByDefault, ThreadProvider, useThread } from '../thread';
+import { ancestorsOf, excerpt, findMatches, FLAT_DEPTH, indexThread, MIN_QUERY, opensByDefault, ThreadProvider, useThread } from '../thread';
 import { plainText } from '../richtext';
 import { useViewSettings } from '../settings';
 import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, SaveButton, ShareButton, Skeleton, Time } from './ui';
@@ -31,16 +31,22 @@ function ParentPeek({ comment }: { comment: Comment }) {
 }
 
 function CommentBatch({ comments, depth = 0, parent }: { comments: Comment[]; depth?: number; parent?: Comment }) {
+  const { path } = useThread();
   const [shown, setShown] = useState(BATCH);
+  // A match further down the list is reached by building as far as it and no
+  // further, so a common word does not mount the rest of the thread.
+  let wanted = 0;
+  if (path) for (let index = comments.length - 1; index >= 0 && !wanted; index--) if (path.has(comments[index].id)) wanted = index + 1;
+  const limit = Math.max(shown, wanted);
   return <div className={depth ? 'replies' : 'comments-list'}>
     {depth > FLAT_DEPTH && parent && <ParentPeek comment={parent} />}
-    {comments.slice(0, shown).map(comment => <CommentView key={comment.id} comment={comment} depth={depth} />)}
-    {shown < comments.length && <button className="text-button more-comments" onClick={() => setShown(shown + BATCH)}>Show more {depth ? 'replies' : 'comments'} <span aria-hidden="true">↓</span></button>}
+    {comments.slice(0, limit).map(comment => <CommentView key={comment.id} comment={comment} depth={depth} />)}
+    {limit < comments.length && <button className="text-button more-comments" onClick={() => setShown(limit + BATCH)}>Show more {depth ? 'replies' : 'comments'} <span aria-hidden="true">↓</span></button>}
   </div>;
 }
 
 function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
-  const { index, author, folded, unfolded } = useThread();
+  const { index, author, folded, unfolded, query, matched, path, current } = useThread();
   const { autoExpand } = useViewSettings();
   const entry = index.get(comment.id);
   // Folding hides a whole thread, so only the threads themselves fold; a
@@ -51,7 +57,11 @@ function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
   // What a collapsed comment hides is its whole subtree, not the replies
   // directly under it, so that is the number worth reporting.
   const total = entry?.total ?? replies.length;
-  return <article className={`comment ${depth >= FLAT_DEPTH ? 'flat-thread' : ''}`} data-comment-id={comment.id} tabIndex={-1}>
+  // A find opens what it has to in order to show the match it is visiting, and
+  // gives it straight back when the query is cleared.
+  const onPath = !!path?.has(comment.id);
+  const hit = !!matched?.has(comment.id);
+  return <article className={`comment ${depth >= FLAT_DEPTH ? 'flat-thread' : ''} ${hit ? 'is-match' : ''} ${current === comment.id ? 'is-current' : ''}`} data-comment-id={comment.id} tabIndex={-1}>
     <div className="comment-header">
       <button className="collapse-target" aria-label={`${collapsed ? 'Expand' : 'Collapse'} comment by ${comment.by ?? 'unknown author'}`} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)} />
       <span className="collapse-mark" aria-hidden="true">{collapsed ? '+' : '−'}</span>
@@ -62,11 +72,11 @@ function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
       {comment.by && comment.by === author && <span className="op-badge">OP<span className="sr-only"> — the author of this story</span></span>}
       <Time value={comment.time} />
     </div>
-    {collapsed && <span className="collapsed-note">Comment collapsed{total ? ` · ${total} ${total === 1 ? 'reply' : 'replies'}` : ''}</span>}
-    <div hidden={collapsed}>
-      {comment.removed ? <p className="missing-comment">This comment is no longer available.</p> : <RichText text={comment.text ?? ''} />}
+    {collapsed && !onPath && <span className="collapsed-note">Comment collapsed{total ? ` · ${total} ${total === 1 ? 'reply' : 'replies'}` : ''}</span>}
+    <div hidden={collapsed && !onPath}>
+      {comment.removed ? <p className="missing-comment">This comment is no longer available.</p> : <RichText text={comment.text ?? ''} highlight={hit ? query : undefined} />}
       {replies.length > 0 && <button className="reply-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><span className={expanded ? 'rotated' : ''}><Icon name="chevron" size={12} /></span>{expanded ? 'Hide replies' : `Show ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}</button>}
-      {expanded && <CommentBatch comments={replies} depth={depth + 1} parent={comment} />}
+      {(expanded || onPath) && <CommentBatch comments={replies} depth={depth + 1} parent={comment} />}
     </div>
   </article>;
 }
@@ -79,6 +89,9 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [order, setOrder] = useState<Order>('hn');
   const [fold, setFold] = useState({ turn: 0, all: false });
+  const [query, setQuery] = useState('');
+  const [cursor, setCursor] = useState(0);
+  const finding = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(false);
   const [commentsError, setCommentsError] = useState(false);
@@ -118,10 +131,38 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
   }, [comments, order]);
   // Built from the thread as it arrived, so re-sorting the roots does not
   // rebuild what is true of every comment regardless of order.
+  const index = useMemo(() => indexThread(comments ?? []), [comments]);
+  // Deferred, so a long thread is re-searched behind the typing rather than
+  // between one keystroke and the next.
+  const asked = useDeferredValue(query);
+  const matches = useMemo(() => findMatches(threads, asked), [threads, asked]);
+  const at = Math.min(cursor, Math.max(0, matches.length - 1));
+  const current = matches[at];
   const thread = useMemo(() => ({
-    index: indexThread(comments ?? []), author: item?.by,
-    folded: fold.all, unfolded: !fold.all && fold.turn > 0,
-  }), [comments, item?.by, fold]);
+    index, author: item?.by, folded: fold.all, unfolded: !fold.all && fold.turn > 0,
+    query: asked, matched: new Set(matches),
+    path: current === undefined ? undefined : new Set([...ancestorsOf(index, current), current]),
+    current,
+  }), [index, item?.by, fold, asked, matches, current]);
+  function step(by: number) {
+    if (!matches.length) return;
+    const next = (at + by + matches.length) % matches.length;
+    setCursor(next);
+    // The comment may only now be being built, so it is looked for once the
+    // tree that holds it has been laid out.
+    requestAnimationFrame(() => document
+      .querySelector(`.discussion-panel:not([hidden]) [data-comment-id="${matches[next]}"]`)
+      ?.scrollIntoView({ block: 'center' }));
+  }
+  function findKeys(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') { event.preventDefault(); step(event.shiftKey ? -1 : 1); }
+    // Escape belongs to the find here, not to leaving the story.
+    if (event.key === 'Escape') {
+      event.preventDefault(); event.stopPropagation();
+      setQuery('');
+      document.querySelector<HTMLElement>(`.discussion-panel:not([hidden]) [data-comment-id="${current ?? ''}"]`)?.focus();
+    }
+  }
   // The tree remounts to fold, which takes the focused comment with it, so the
   // comment that was being read is found again once the new tree is laid out.
   function foldAll(all: boolean) {
@@ -158,7 +199,17 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
           {!showArticle && <div className="article-links">{url && <Link to={articleTo} className="article-link">Read <Icon name="reader" size={16} /></Link>}<OpenIn url={url} id={id} title={plainTitle(item.title)} /></div>}
         </header>
         {item.text && <div className="story-body"><RichText text={item.text} /></div>}
-        {!supported ? <div className="small-empty"><p>{item.type === 'comment' ? 'This link points to a comment rather than a story, and the thread it belongs to lives on Hacker News.' : 'Continue reading this item on Hacker News.'}</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><div className="label-controls"><button type="button" className="text-button collapse-all" aria-pressed={fold.all} onClick={() => foldAll(!fold.all)}>{fold.all ? 'Expand all' : 'Collapse all'}</button><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div></div>{commentsError ? <Failure retry={() => setCommentsAttempt(commentsAttempt + 1)}>Couldn’t load the comments. A story posted in the last few minutes may not be searchable yet.</Failure> : !comments ? <Skeleton rows={3} /> : threads.length ? <ThreadProvider value={thread}><CommentBatch key={`${order}:${fold.turn}`} comments={threads} /></ThreadProvider> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
+        {!supported ? <div className="small-empty"><p>{item.type === 'comment' ? 'This link points to a comment rather than a story, and the thread it belongs to lives on Hacker News.' : 'Continue reading this item on Hacker News.'}</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><div className="label-controls"><div className="find-control">
+          <Icon name="search" size={12} />
+          <input ref={finding} type="search" value={query} aria-label="Find in comments"
+            placeholder="Find in comments" onKeyDown={findKeys}
+            onChange={event => { setQuery(event.target.value); setCursor(0); }} />
+          {query.trim().length >= MIN_QUERY && <>
+            <span className="find-count" role="status">{matches.length ? `${at + 1} of ${matches.length}` : 'No matches'}</span>
+            <button type="button" className="find-previous" aria-label="Previous match" disabled={!matches.length} onClick={() => step(-1)}>↑</button>
+            <button type="button" className="find-next" aria-label="Next match" disabled={!matches.length} onClick={() => step(1)}>↓</button>
+          </>}
+        </div><button type="button" className="text-button collapse-all" aria-pressed={fold.all} onClick={() => foldAll(!fold.all)}>{fold.all ? 'Expand all' : 'Collapse all'}</button><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div></div>{commentsError ? <Failure retry={() => setCommentsAttempt(commentsAttempt + 1)}>Couldn’t load the comments. A story posted in the last few minutes may not be searchable yet.</Failure> : !comments ? <Skeleton rows={3} /> : threads.length ? <ThreadProvider value={thread}><CommentBatch key={`${order}:${fold.turn}`} comments={threads} /></ThreadProvider> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
         <div className="discussion-end"><span>That’s the conversation, at your pace.</span><ExternalLink href={hnUrl(id)}>Reply on Hacker News <Icon name="arrow" size={13} /></ExternalLink></div>
       </div>}
     </div>

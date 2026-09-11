@@ -143,7 +143,21 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .discussion-label { margin-top: 28px; border-block: 1px solid var(--line); padding: 14px 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .discussion-label h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 12px; font-weight: 550; }
 .discussion-label h3 > span { font-size: 10px; font-weight: 400; background: var(--line); padding: 2px 6px; border-radius: 4px; }
-.label-controls { display: flex; align-items: center; gap: 16px; }
+.label-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.find-control { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 4px 10px; }
+.find-control:focus-within { border-color: var(--accent); color: var(--accent); }
+.find-control input { font: inherit; font-size: 11px; width: 118px; border: 0; padding: 2px 0; background: transparent; color: var(--text); }
+.find-control input::placeholder { color: var(--subtle); }
+.find-control input:focus-visible { outline: none; }
+.find-control input::-webkit-search-cancel-button { display: none; }
+.find-count { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.find-control button { background: transparent; border: 0; padding: 2px 3px; color: var(--subtle); border-radius: 3px; }
+.find-control button:hover:not(:disabled) { color: var(--accent); background: var(--hover); }
+.find-control button:disabled { opacity: .4; }
+.prose mark { background: var(--accent-soft); color: inherit; border-radius: 2px; }
+/* The match being visited is the one the thread was opened for. */
+.comment.is-current > .comment-header .avatar { background: var(--accent-soft); color: var(--accent); }
+.comment.is-current > .comment-header::after { content: ''; position: absolute; left: -14px; top: -4px; bottom: -4px; width: 2px; background: var(--accent); border-radius: 2px; }
 .sort-control { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
 .sort-control select { background: transparent; border: 1px solid var(--line); border-radius: 5px; color: var(--text); padding: 5px 7px; font-size: 11px; cursor: pointer; }
 .sort-control option { background: var(--surface); }

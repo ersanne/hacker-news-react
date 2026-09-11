@@ -152,3 +152,57 @@ test('X folds the whole conversation and keeps the comment being read', async ({
   await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
   await expect(page.getByText('A surviving reply below a deleted comment.', { exact: true })).toBeVisible();
 });
+
+test('find counts the whole thread while mounting only the match it visits', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  const rows = discussion.locator('.comments-list > .comment');
+  await expect(rows).toHaveCount(20);
+
+  // Comments 120-124 all match and all sit past the first batch. The count
+  // reports every one of them, while the list grows only as far as the match
+  // being visited rather than jumping to the end.
+  await discussion.getByLabel('Find in comments').fill('Comment 12');
+  await expect(discussion.getByText('1 of 5')).toBeVisible();
+  await expect(rows).toHaveCount(21);
+  await expect(discussion.locator('.comment.is-current')).toHaveAttribute('data-comment-id', '120');
+  await expect(discussion.locator('mark').first()).toHaveText('Comment 12');
+
+  await discussion.getByRole('button', { name: 'Next match' }).click();
+  await expect(discussion.getByText('2 of 5')).toBeVisible();
+  await expect(rows).toHaveCount(22);
+  await expect(discussion.locator('.comment.is-current')).toHaveAttribute('data-comment-id', '121');
+
+  // Wrapping round from the last match returns to the first.
+  for (let i = 0; i < 4; i++) await discussion.getByRole('button', { name: 'Next match' }).click();
+  await expect(discussion.getByText('1 of 5')).toBeVisible();
+});
+
+test('find opens the way down to a match and gives the thread back afterwards', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+
+  // This one is three deep under a chain nothing has opened.
+  await expect(page.getByText('A surviving reply below a deleted comment.', { exact: true })).toBeHidden();
+  await discussion.getByLabel('Find in comments').fill('surviving');
+  await expect(discussion.getByText('1 of 1')).toBeVisible();
+  await expect(page.getByText('A surviving reply below a deleted comment.', { exact: true })).toBeVisible();
+
+  await discussion.getByLabel('Find in comments').fill('');
+  await expect(page.getByText('A surviving reply below a deleted comment.', { exact: true })).toBeHidden();
+  await expect(discussion.locator('mark')).toHaveCount(0);
+});
+
+test('a query that looks like markup is searched for, not run', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  await discussion.getByLabel('Find in comments').fill('<script>alert(1)</script>');
+  await expect(discussion.getByText('No matches')).toBeVisible();
+  expect(await page.evaluate(() => document.querySelectorAll('.discussion-panel script').length)).toBe(0);
+});
