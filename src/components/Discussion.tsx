@@ -22,7 +22,7 @@ function CommentBatch({ comments, depth = 0 }: { comments: Comment[]; depth?: nu
 }
 
 function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
-  const { index } = useThread();
+  const { index, author } = useThread();
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const replies = comment.kids;
@@ -35,6 +35,9 @@ function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
       <span className="collapse-mark" aria-hidden="true">{collapsed ? '+' : '−'}</span>
       <span className="avatar" aria-hidden="true">{comment.removed ? '–' : (comment.by?.[0] ?? '?').toUpperCase()}</span>
       <span className="comment-author">{comment.removed ? 'Removed comment' : <Author name={comment.by} />}</span>
+      {/* The header makes everything but the collapse target click-through, so
+          this says what it means in text rather than in a tooltip. */}
+      {comment.by && comment.by === author && <span className="op-badge">OP<span className="sr-only"> — the author of this story</span></span>}
       <Time value={comment.time} />
     </div>
     {collapsed && <span className="collapsed-note">Comment collapsed{total ? ` · ${total} ${total === 1 ? 'reply' : 'replies'}` : ''}</span>}

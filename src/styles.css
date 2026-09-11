@@ -160,6 +160,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .collapse-mark { width: 14px; font-size: 14px; color: var(--muted); text-align: center; flex-shrink: 0; }
 .avatar { width: 23px; height: 23px; display: grid; place-items: center; background: var(--hover); color: var(--muted); font-size: 10px; font-weight: 600; border-radius: 6px; flex-shrink: 0; }
 .comment-author { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.op-badge { flex-shrink: 0; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 600; letter-spacing: .4px; padding: 2px 5px; border-radius: 3px; }
 .comment-header time { color: var(--muted); margin-left: 3px; white-space: nowrap; font-size: 10px; }
 .prose { font-size: 14px; line-height: var(--prose-line, 1.85); overflow-wrap: anywhere; }
 .prose p { margin: 0 0 13px; }
@@ -404,7 +405,8 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   .article-heading h2 { font-size: 36px; }
   .prose { font-size: 14px; }
   .comment-header { font-size: 11px; }
-  .comment-header time { font-size: 10px; }
+  .op-badge { flex-shrink: 0; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 600; letter-spacing: .4px; padding: 2px 5px; border-radius: 3px; }
+.comment-header time { font-size: 10px; }
   .reply-toggle, .text-button { min-height: 44px; font-size: 12px; }
   /* A thumb cannot hover, so the block's controls are simply always shown. */
   .code-tools { opacity: 1; }

@@ -68,3 +68,20 @@ test('a long code block folds, and wrapping is a preference every block follows'
   await page.reload();
   await expect(blocks.first()).toHaveAttribute('data-wrap', 'on');
 });
+
+test('the story author is marked in their own thread', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  const rows = discussion.locator('.comments-list > .comment');
+
+  // Story 1 is by simonw, and so is the comment at the top of its thread.
+  await expect(rows.first().locator('.op-badge')).toHaveText(/OP/);
+  await expect(rows.nth(1).locator('.op-badge')).toHaveCount(0);
+
+  // A removed comment has no author, and an absent author is not a match.
+  for (let i = 0; i < 2; i++) await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).first().click();
+  await expect(page.getByText('This comment is no longer available.')).toBeVisible();
+  await expect(discussion.locator('.op-badge')).toHaveCount(1);
+});
