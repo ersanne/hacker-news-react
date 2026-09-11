@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getItem, getItems, type HNItem, type ItemResult } from '../api';
-import { domain, hnUrl, plainTitle, safeUrl } from '../format';
-import { Author, ExternalLink, Failure, Icon, RichText, Skeleton, Time } from './ui';
+import { archiveUrl, domain, hnUrl, plainTitle, safeUrl } from '../format';
+import { Author, ExternalLink, Failure, Favicon, Icon, RichText, SaveButton, Skeleton, Time } from './ui';
 
 function CommentBatch({ ids, depth = 0 }: { ids: number[]; depth?: number }) {
   const [items, setItems] = useState<ItemResult[]>([]);
@@ -46,7 +46,10 @@ function Comment({ item, depth }: { item: HNItem | null; depth: number }) {
   </article>;
 }
 
-export default function Discussion({ id, backTo, active }: { id: number; backTo: string; active: boolean }) {
+export default function Discussion({ id, backTo, active, articleTo, showArticle, saved, onToggleSaved }: {
+  id: number; backTo: string; active: boolean; articleTo: string; showArticle: boolean;
+  saved: boolean; onToggleSaved: () => void;
+}) {
   const [item, setItem] = useState<HNItem | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(false);
@@ -71,10 +74,21 @@ export default function Discussion({ id, backTo, active }: { id: number; backTo:
   const unavailable = !item || item.deleted || item.dead;
   const supported = !item?.type || ['story', 'job'].includes(item.type);
   return <section className="discussion-panel" hidden={!active} aria-label="Discussion">
-    <div className="discussion-toolbar"><Link to={backTo} className="back-link"><Icon name="back" size={16} /><span>Back to stories</span></Link><ExternalLink href={hnUrl(id)}>View on HN <Icon name="arrow" size={13} /></ExternalLink></div>
+    <div className="discussion-toolbar">
+      <Link to={backTo} className="back-link"><Icon name="back" size={16} /><span>Back to stories</span></Link>
+      <div className="pane-tabs">
+        <Link to={articleTo} className="pane-tab"><Icon name="reader" size={14} />Article</Link>
+        <span className="pane-tab" aria-current="page"><Icon name="comment" size={14} />Comments</span>
+      </div>
+      <div className="discussion-actions">
+        <SaveButton saved={saved} onToggle={onToggleSaved} title={plainTitle(item?.title)} className="with-label" />
+        {!showArticle && <Link to={articleTo} className="pane-show"><Icon name="reader" size={13} />Show article</Link>}
+        <ExternalLink href={hnUrl(id)}>View on HN <Icon name="arrow" size={13} /></ExternalLink>
+      </div>
+    </div>
     <div className="discussion-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>
       {busy ? <Skeleton rows={5} /> : error ? <Failure retry={() => setAttempt(attempt + 1)}>Couldn’t load this discussion.</Failure> : unavailable ? <div className="unavailable"><h2 tabIndex={-1} ref={heading}>Story unavailable</h2><p>This story may have been removed.</p><ExternalLink href={hnUrl(id)}>Check on Hacker News <Icon name="arrow" size={14} /></ExternalLink></div> : <div className="discussion-inner">
-        <header className="article-heading"><div className="eyebrow">{url ? domain(url) : 'FROM THE COMMUNITY'}</div><h2 ref={heading} tabIndex={-1}>{plainTitle(item.title)}</h2><div className="article-meta"><span className="score">▴ {item.score ?? 0} points</span><span>by <Author name={item.by} /></span><Time value={item.time} /></div>{url && <ExternalLink href={url} className="article-link">Read original <Icon name="arrow" size={16} /></ExternalLink>}</header>
+        <header className="article-heading"><div className="eyebrow article-source">{url && <Favicon url={url} />}{url ? domain(url) : 'FROM THE COMMUNITY'}</div><h2 ref={heading} tabIndex={-1}>{plainTitle(item.title)}</h2><div className="article-meta"><span className="score">▴ {item.score ?? 0} points</span><span>by <Author name={item.by} /></span><Time value={item.time} /></div>{url && <div className="article-links"><Link to={articleTo} className="article-link">Read here <Icon name="reader" size={16} /></Link><ExternalLink href={url}>Original <Icon name="arrow" size={13} /></ExternalLink><ExternalLink href={archiveUrl(url)}><Icon name="archive" size={13} /> archive.is</ExternalLink></div>}</header>
         {item.text && <div className="story-body"><RichText text={item.text} /></div>}
         {!supported ? <div className="small-empty"><p>Continue reading this item on Hacker News.</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><span>HN order</span></div>{item.kids?.length ? <CommentBatch ids={item.kids} /> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
         <div className="discussion-end"><span>That’s the conversation, at your pace.</span><ExternalLink href={hnUrl(id)}>Reply on Hacker News <Icon name="arrow" size={13} /></ExternalLink></div>

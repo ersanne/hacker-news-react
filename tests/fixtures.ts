@@ -71,3 +71,19 @@ export async function mockSearch(page: Page, options: { fail?: boolean } = {}) {
   });
   return queries;
 }
+
+export async function mockReader(page: Page, options: { fail?: boolean } = {}) {
+  const urls: string[] = [];
+  await page.route('https://r.jina.ai/**', async route => {
+    const target = route.request().url().replace('https://r.jina.ai/', '');
+    urls.push(target);
+    if (options.fail) return route.fulfill({ status: 503, body: 'Unavailable' });
+    return route.fulfill({ json: { data: { title: 'The quiet craft', content: `# The quiet craft\n\nExtracted body for ${target}.\n\n${'word '.repeat(300)}` } } });
+  });
+  return urls;
+}
+
+export async function mockSite(page: Page) {
+  await page.route('https://maggieappleton.com/**', route =>
+    route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Original</title><h1>The original page</h1>' }));
+}

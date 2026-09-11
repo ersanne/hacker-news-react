@@ -59,7 +59,12 @@ test('feed scroll is restored after returning from a story', async ({ page }) =>
   const scroll = page.locator('.feed-panel:not([hidden]) .feed-scroll');
   await scroll.evaluate(element => { element.scrollTop = 600; });
   const before = await scroll.evaluate(element => element.scrollTop);
-  await page.locator('.story-row').nth(6).locator('h2 a').click();
+  const visible = await scroll.evaluate(element => {
+    const middle = element.getBoundingClientRect().top + element.clientHeight / 2;
+    return [...element.querySelectorAll('.story-row')].findIndex(row => row.getBoundingClientRect().top >= middle);
+  });
+  // A row already in view, so clicking it never scrolls the feed itself.
+  await page.locator('.story-row').nth(visible).locator('h2 a').click();
   await page.getByRole('link', { name: 'Back to stories' }).click();
   await expect.poll(() => scroll.evaluate(element => element.scrollTop)).toBeGreaterThan(400);
   expect(Math.abs(await scroll.evaluate(element => element.scrollTop) - before)).toBeLessThan(180);

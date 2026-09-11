@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clearCache, getFeed, getItems, type Feed, type ItemResult } from '../api';
-import { ExternalLink, Failure, Icon, Skeleton } from './ui';
+import { ExternalLink, Failure, HideReadToggle, Icon, Skeleton } from './ui';
 import StoryList from './StoryList';
 
 const feedInfo = {
@@ -11,8 +11,9 @@ const feedInfo = {
   show: { title: 'Made by the community', description: 'Side projects, big ideas, and things people built.' },
 };
 
-export default function FeedPanel({ feed, active, enabled, selected, read, onRead }: {
+export default function FeedPanel({ feed, active, enabled, selected, read, onRead, saved, onToggleSaved, hideRead, onHideRead, hrefSuffix }: {
   feed: Feed; active: boolean; enabled: boolean; selected: number | null; read: Set<number>; onRead: (id: number) => void;
+  saved: Set<number>; onToggleSaved: (id: number) => void; hideRead: boolean; onHideRead: (on: boolean) => void; hrefSuffix: string;
 }) {
   const [ids, setIds] = useState<number[]>([]);
   const [items, setItems] = useState<ItemResult[]>([]);
@@ -48,18 +49,22 @@ export default function FeedPanel({ feed, active, enabled, selected, read, onRea
     if (version === generation.current) setItems(previous => previous.map(item => item.id === id ? result : item));
   }
 
+  // Filtering happens at render so pagination keeps counting every story the
+  // feed returned, not only the visible ones.
+  const shown = hideRead ? items.filter(({ id }) => id === selected || !read.has(id)) : items;
   return <section className="feed-panel" hidden={!active} aria-label={`${feed} stories`}>
     <div className="feed-heading">
       <div><span className="eyebrow">YOUR DAILY CURIOSITY</span><h1>{feedInfo[feed].title}</h1><p>{feedInfo[feed].description}</p></div>
       <button className={`icon-button refresh ${busy ? 'is-loading' : ''}`} aria-label="Refresh stories" title="Refresh stories" disabled={busy} onClick={() => { clearCache(); void load(true); }}><Icon name="refresh" /></button>
     </div>
-    <div className="list-caption"><span>STORIES</span><span>{busy ? 'Updating…' : 'A little less noise.'}</span></div>
+    <div className="list-caption"><span>{busy ? 'UPDATING…' : 'STORIES'}</span><HideReadToggle on={hideRead} onChange={onHideRead} /></div>
     <div className="feed-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>
       {error && <Failure retry={() => void load(!loaded)}>Couldn’t load the stories. Your connection may need a moment.</Failure>}
       {!loaded && busy && <Skeleton rows={8} />}
       {loaded && !ids.length && <div className="small-empty">No stories here just yet. Check back soon.</div>}
-      <StoryList items={items} selected={selected} read={read} onRead={onRead} onRetry={id => void retryItem(id)}
-        href={id => `/item?id=${id}&feed=${feed}`} fallbackSource={feed === 'ask' ? 'Ask HN' : 'Hacker News'} />
+      {loaded && ids.length > 0 && !shown.length && <div className="small-empty">Every story here is read. Turn off “Hide read” to see them again.</div>}
+      <StoryList items={shown} selected={selected} read={read} onRead={onRead} saved={saved} onToggleSaved={onToggleSaved} onRetry={id => void retryItem(id)}
+        href={id => `/item?id=${id}&feed=${feed}${hrefSuffix}`} fallbackSource={feed === 'ask' ? 'Ask HN' : 'Hacker News'} />
       {loaded && items.length < ids.length && <div className="load-more-wrap"><button className="secondary-button" disabled={busy} onClick={() => void load()}>{busy ? 'Loading stories…' : 'Load more stories'} <span aria-hidden="true">↓</span></button><span className="load-caption">{items.length} of {ids.length} stories</span></div>}
       {loaded && items.length > 0 && items.length >= ids.length && <p className="end-note">You’re all caught up. A good time for a little break.</p>}
     </div>

@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { ago, sanitize } from '../format';
+import { useState, type ReactNode } from 'react';
+import { ago, domain, faviconUrl, sanitize } from '../format';
 
-export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search'; size?: number }) {
+export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help'; size?: number }) {
   const paths = {
     arrow: <><path d="M7 17 17 7M7 7h10v10" /></>,
     back: <><path d="m12 5-7 7 7 7M5 12h14" /></>,
@@ -11,8 +11,31 @@ export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' |
     chevron: <path d="m9 5 7 7-7 7" />,
     search: <><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></>,
     book: <><path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v14" /><path d="M6 9h3m6 0h3M6 12h3m6 0h3" /></>,
+    archive: <><path d="M3 7h18v3H3zM5 10v9h14v-9" /><path d="M10 14h4" /></>,
+    star: <path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8Z" />,
+    reader: <><path d="M4 5h16v14H4z" /><path d="M7 9h10M7 12.5h10M7 16h6" /></>,
+    embed: <><path d="M3 5h18v14H3z" /><path d="M3 9h18" /><path d="M6 7h.01M9 7h.01" /></>,
+    help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.7-.7 1.3v.3" /><path d="M12 17h.01" /></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+// The monogram sits underneath the icon, so a slow or missing favicon still
+// leaves the tile readable.
+export function Favicon({ url, fallback = '?', className = '' }: { url?: string; fallback?: string; className?: string }) {
+  const host = domain(url);
+  const [broken, setBroken] = useState(false);
+  return <span className={`favicon ${className}`} aria-hidden="true">
+    {(host || fallback).charAt(0).toUpperCase()}
+    {host && !broken && <img src={faviconUrl(host)} alt="" loading="lazy" decoding="async" onError={() => setBroken(true)} />}
+  </span>;
+}
+export function HideReadToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+  return <label className="hide-read"><input type="checkbox" checked={on} onChange={event => onChange(event.target.checked)} />Hide read</label>;
+}
+export function SaveButton({ saved, onToggle, title, className = '' }: { saved: boolean; onToggle: () => void; title: string; className?: string }) {
+  return <button type="button" className={`save-button ${saved ? 'is-saved' : ''} ${className}`} aria-pressed={saved}
+    aria-label={`${saved ? 'Remove' : 'Save'} ${title}`} title={saved ? 'Remove from saved' : 'Save story'}
+    onClick={event => { event.preventDefault(); event.stopPropagation(); onToggle(); }}><Icon name="star" size={14} /></button>;
 }
 export function ExternalLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
   return <a href={href} className={className} target="_blank" rel="noopener noreferrer">{children}<span className="sr-only"> (opens in a new tab)</span></a>;

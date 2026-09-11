@@ -17,6 +17,7 @@ export type HNItem = {
 
 const HN_API = 'https://hacker-news.firebaseio.com/v0';
 const SEARCH_API = 'https://hn.algolia.com/api/v1/search';
+const READER_API = 'https://r.jina.ai/';
 const TTL = 5 * 60 * 1000;
 const cache = new Map<string, { value: unknown; expires: number }>();
 const pending = new Map<string, Promise<unknown>>();
@@ -32,12 +33,12 @@ async function limited<T>(work: () => Promise<T>): Promise<T> {
   finally { active--; queue.shift()?.(); }
 }
 
-async function request<T>(url: string): Promise<T> {
+async function request<T>(url: string, init?: RequestInit, timeout = 15000): Promise<T> {
   const saved = cache.get(url);
   if (saved && saved.expires > Date.now()) return saved.value as T;
   if (pending.has(url)) return pending.get(url) as Promise<T>;
   const promise = limited(async () => {
-    const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeout) });
     if (!response.ok) throw new Error('Hacker News could not be reached. Please try again.');
     const value = await response.json() as T;
     cache.delete(url);
@@ -52,7 +53,21 @@ async function request<T>(url: string): Promise<T> {
 
 export function getItem(id: number) { return request<HNItem | null>(`${HN_API}/item/${id}.json`); }
 export function getFeed(feed: Feed) { return request<number[]>(`${HN_API}/${feed}stories.json`); }
-export function clearCache() { cache.clear(); }
+export function clearCache() { cache.clear(); prefetched.clear(); }
+
+const prefetched = new Set<number>();
+// Pointing at a row usually precedes opening it, so the first batch of comments
+// the discussion renders is fetched before the click. Search results also reach
+// the item API for the first time here.
+export async function prefetchStory(id: number) {
+  if (prefetched.has(id)) return;
+  prefetched.add(id);
+  try {
+    const item = await getItem(id);
+    const kids = item?.kids?.slice(0, 20) ?? [];
+    if (kids.length) await getItems(kids);
+  } catch { prefetched.delete(id); }
+}
 
 export type ItemResult = { id: number; item: HNItem | null; error: boolean };
 export async function getItems(ids: number[]): Promise<ItemResult[]> {
@@ -105,4 +120,21 @@ export async function searchStories(query: string, page = 0): Promise<SearchPage
     }];
   });
   return { results, pages: data.nbPages ?? 0, total: data.nbHits ?? results.length };
+}
+
+export type Article = { title?: string; markdown: string };
+type ReaderResponse = { data?: { title?: string | null; content?: string | null } };
+
+// Article text comes from r.jina.ai, which extracts the readable part of a page
+// and returns it as markdown. It is CORS-open and needs no key, but it renders
+// the page server-side, so it is given a longer timeout than the HN APIs.
+export async function getArticle(url: string): Promise<Article> {
+  const data = await request<ReaderResponse>(`${READER_API}${url}`, { headers: { Accept: 'application/json' } }, 30000);
+  const title = data.data?.title?.trim() ?? '';
+  let markdown = data.data?.content?.trim() ?? '';
+  if (!markdown) throw new Error('No readable article was found at this link.');
+  // Extraction often keeps the page heading, which the pane already shows.
+  const heading = markdown.match(/^#{1,2} +(.+)/);
+  if (heading && title.startsWith(heading[1].trim())) markdown = markdown.slice(heading[0].length).trimStart();
+  return { title: title || undefined, markdown };
 }

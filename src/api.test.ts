@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearCache, getFeed, getItem, getItems, searchStories } from './api';
+import { clearCache, getArticle, getFeed, getItem, getItems, prefetchStory, searchStories } from './api';
 
 beforeEach(() => { clearCache(); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -88,5 +88,37 @@ describe('HN data client', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce(response({})));
     await expect(searchStories('rust')).rejects.toThrow('could not be reached');
     expect(await searchStories('rust')).toEqual({ results: [], pages: 0, total: 0 });
+  });
+  it('returns extracted article markdown and rejects pages with no readable text', async () => {
+    const fetcher = vi.fn(async (url: string) => response(url.includes('empty')
+      ? { data: { title: 'Empty', content: '   ' } }
+      : { data: { title: 'The Quiet Web', content: '# Heading\n\nBody text.' } }));
+    vi.stubGlobal('fetch', fetcher);
+    expect(await getArticle('https://example.com/a')).toEqual({ title: 'The Quiet Web', markdown: '# Heading\n\nBody text.' });
+    expect(fetcher.mock.calls[0][0]).toBe('https://r.jina.ai/https://example.com/a');
+    await expect(getArticle('https://example.com/empty')).rejects.toThrow('No readable article');
+  });
+  it('prefetches a story and its first comments once, and retries after a failure', async () => {
+    const fetcher = vi.fn(async (url: string) => url.includes('/item/5.json')
+      ? response({ id: 5, kids: Array.from({ length: 25 }, (_, i) => 100 + i) })
+      : response({ id: 1 }));
+    vi.stubGlobal('fetch', fetcher);
+    await prefetchStory(5);
+    // The story itself plus the twenty comments the discussion opens with.
+    expect(fetcher).toHaveBeenCalledTimes(21);
+    await prefetchStory(5);
+    expect(fetcher).toHaveBeenCalledTimes(21);
+
+    clearCache();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false }) as Response));
+    await prefetchStory(6);
+    const retry = vi.fn(async () => response({ id: 6 }));
+    vi.stubGlobal('fetch', retry);
+    await prefetchStory(6);
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+  it('drops a leading heading that only repeats the article title', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response({ data: { title: 'The Quiet Web — a blog', content: '# The Quiet Web\n\nBody text.' } })));
+    expect((await getArticle('https://example.com/a')).markdown).toBe('Body text.');
   });
 });
