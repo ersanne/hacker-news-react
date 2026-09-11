@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ancestorsOf, indexThread } from './thread';
+import { ancestorsOf, indexThread, opensByDefault } from './thread';
 import type { Comment } from './api';
 
 const comment = (id: number, kids: Comment[] = [], by = `user${id}`): Comment =>
@@ -26,6 +26,19 @@ describe('a discussion as a tree', () => {
     expect(ancestorsOf(index, 3)).toEqual([1, 2]);
     expect(ancestorsOf(index, 1)).toEqual([]);
     expect(ancestorsOf(index, 99)).toEqual([]);
+  });
+  it('opens a subtree small enough to unfurl in one go, and leaves the rest', () => {
+    const index = indexThread([comment(1, [comment(2), comment(3), comment(4)]), comment(5, [comment(6), comment(7), comment(8), comment(9)])]);
+    expect(opensByDefault(index.get(1))).toBe(true);
+    expect(opensByDefault(index.get(5))).toBe(false);
+    // Nothing to open, and nothing known about it.
+    expect(opensByDefault(index.get(2))).toBe(false);
+    expect(opensByDefault(undefined)).toBe(false);
+  });
+  it('leaves a reply below the flattening depth to be opened deliberately', () => {
+    const index = indexThread([comment(1, [comment(2, [comment(3, [comment(4, [comment(5)])])])])]);
+    expect(index.get(4)?.depth).toBe(3);
+    expect(opensByDefault(index.get(4))).toBe(false);
   });
   it('reads an empty discussion as an empty index', () => {
     expect(indexThread([]).size).toBe(0);

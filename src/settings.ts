@@ -6,6 +6,7 @@ export type Settings = {
   order: 'comments-first' | 'article-first';
   density: 'comfortable' | 'compact';
   heading: boolean;
+  autoExpand: boolean;
   refresh: 0 | 1 | 5 | 15;
 };
 
@@ -22,6 +23,7 @@ export const defaults: Settings = {
   order: 'comments-first',
   density: 'comfortable',
   heading: true,
+  autoExpand: true,
   refresh: 0,
 };
 
@@ -42,6 +44,7 @@ export function parseSettings(raw: string | null): Settings {
     order: pick('order'),
     density: pick('density'),
     heading: typeof stored.heading === 'boolean' ? stored.heading : defaults.heading,
+    autoExpand: typeof stored.autoExpand === 'boolean' ? stored.autoExpand : defaults.autoExpand,
     refresh: pick('refresh'),
   };
 }

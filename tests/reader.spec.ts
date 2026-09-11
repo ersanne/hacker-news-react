@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAPI, mockComments } from './fixtures';
+import { mockAPI, mockComments, pinSettings } from './fixtures';
 
 const firstTitle = 'The quiet craft of building software that lasts';
 
@@ -23,6 +23,7 @@ test('feed navigation, pagination, original links, and explicit refresh', async 
 });
 
 test('discussion, progressive replies, collapse retention, and history', async ({ page }, testInfo) => {
+  await pinSettings(page, { autoExpand: false });
   const requests = await mockAPI(page);
   const threads = await mockComments(page);
   await page.goto('/');
@@ -107,6 +108,7 @@ test('failed items and comments can retry without losing the screen', async ({ p
 });
 
 test('deep threads preserve deleted parents and do not overflow', async ({ page }) => {
+  await pinSettings(page, { autoExpand: false });
   await mockAPI(page);
   await mockComments(page);
   await page.goto('/item?id=1');

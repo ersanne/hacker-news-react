@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getComments, getItem, type Comment, type HNItem } from '../api';
 import { domain, hnUrl, plainTitle, safeUrl, shareUrl } from '../format';
-import { indexThread, ThreadProvider, useThread } from '../thread';
+import { FLAT_DEPTH, indexThread, opensByDefault, ThreadProvider, useThread } from '../thread';
+import { useViewSettings } from '../settings';
 import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, SaveButton, ShareButton, Skeleton, Time } from './ui';
 import RichText from './RichText';
 
@@ -23,13 +24,15 @@ function CommentBatch({ comments, depth = 0 }: { comments: Comment[]; depth?: nu
 
 function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
   const { index, author } = useThread();
+  const { autoExpand } = useViewSettings();
+  const entry = index.get(comment.id);
   const [collapsed, setCollapsed] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => autoExpand && opensByDefault(entry));
   const replies = comment.kids;
   // What a collapsed comment hides is its whole subtree, not the replies
   // directly under it, so that is the number worth reporting.
-  const total = index.get(comment.id)?.total ?? replies.length;
-  return <article className={`comment ${depth >= 3 ? 'flat-thread' : ''}`} data-comment-id={comment.id} tabIndex={-1}>
+  const total = entry?.total ?? replies.length;
+  return <article className={`comment ${depth >= FLAT_DEPTH ? 'flat-thread' : ''}`} data-comment-id={comment.id} tabIndex={-1}>
     <div className="comment-header">
       <button className="collapse-target" aria-label={`${collapsed ? 'Expand' : 'Collapse'} comment by ${comment.by ?? 'unknown author'}`} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)} />
       <span className="collapse-mark" aria-hidden="true">{collapsed ? '+' : '−'}</span>

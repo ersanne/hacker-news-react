@@ -39,6 +39,10 @@ export default function ViewSettings({ open, settings, onChange, onClose, onShor
         <label className="hide-read"><input type="checkbox" checked={settings.heading} onChange={event => onChange({ heading: event.target.checked })} />Show</label>
       </div>
       <div className="setting">
+        <div><span className="setting-label">Short threads</span><span className="setting-hint">Opens a reply or two without asking. Longer threads still wait to be opened.</span></div>
+        <label className="hide-read"><input type="checkbox" checked={settings.autoExpand} onChange={event => onChange({ autoExpand: event.target.checked })} />Open</label>
+      </div>
+      <div className="setting">
         <div><span className="setting-label">Auto-refresh</span><span className="setting-hint">Checks for new stories, and offers them when you are ready.</span></div>
         <select aria-label="Auto-refresh interval" value={settings.refresh} onChange={event => onChange({ refresh: Number(event.target.value) as Settings['refresh'] })}>
           {intervals.map(value => <option key={value} value={value}>{value ? `Every ${value} min` : 'Off'}</option>)}

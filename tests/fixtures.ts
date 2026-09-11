@@ -51,6 +51,12 @@ fixtureItems[6601] = {
   text: `<p>A second thread, so stepping on from the first has somewhere to go.</p><pre><code>${Array.from({ length: 22 }, (_, i) => `line ${i + 1}`).join('\n')}</code></pre>`,
 };
 
+// Thin threads open on their own by default, so the specs that exercise the
+// reveal one click at a time pin the preference off and test the reveal.
+export async function pinSettings(page: Page, settings: Record<string, unknown>) {
+  await page.addInitScript(value => localStorage.setItem('hn-view', value), JSON.stringify(settings));
+}
+
 export async function mockAPI(page: Page, options: { failItems?: Set<number>; delayItem?: number; releaseItem?: Promise<void>; failFeed?: boolean } = {}) {
   const requests: number[] = [];
   await page.route('https://hacker-news.firebaseio.com/v0/**', async route => {

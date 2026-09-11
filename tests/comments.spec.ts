@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAPI, mockComments } from './fixtures';
+import { mockAPI, mockComments, pinSettings } from './fixtures';
 
 test('an HN item link opens in the reader while other links leave it', async ({ page, context }) => {
   await mockAPI(page);
@@ -70,6 +70,7 @@ test('a long code block folds, and wrapping is a preference every block follows'
 });
 
 test('the story author is marked in their own thread', async ({ page }) => {
+  await pinSettings(page, { autoExpand: false });
   await mockAPI(page);
   await mockComments(page);
   await page.goto('/item?id=1');
@@ -84,4 +85,26 @@ test('the story author is marked in their own thread', async ({ page }) => {
   for (let i = 0; i < 2; i++) await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).first().click();
   await expect(page.getByText('This comment is no longer available.')).toBeVisible();
   await expect(discussion.locator('.op-badge')).toHaveCount(1);
+});
+
+test('a thin reply thread opens on its own, and a longer one waits', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+
+  // simonw's thread runs four deep, so it still waits to be opened. Everything
+  // below it is thin enough to unfurl in that one click.
+  await expect(page.getByText('A nested reply worth reading.')).toBeHidden();
+  await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).click();
+  await expect(page.getByText('A surviving reply below a deleted comment.')).toBeVisible();
+
+  // Turning the preference off puts every reply back behind its own click.
+  await page.getByRole('button', { name: 'View settings' }).click();
+  await page.getByRole('dialog', { name: 'View settings' }).getByLabel('Open').uncheck();
+  await page.keyboard.press('Escape');
+  await page.reload();
+  await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).click();
+  await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
+  await expect(page.getByText('A surviving reply below a deleted comment.')).toBeHidden();
 });

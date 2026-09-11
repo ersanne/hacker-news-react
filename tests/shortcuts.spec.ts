@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { mockAPI, mockComments, mockReader, mockSearch } from './fixtures';
+import { mockAPI, mockComments, mockReader, mockSearch, pinSettings } from './fixtures';
 
 test('the shortcut overlay opens on ? and closes without leaving the story', async ({ page }) => {
   await mockAPI(page);
@@ -101,6 +101,7 @@ const focusedAuthor = (page: Page) => page.evaluate(() =>
   document.activeElement?.querySelector('.collapse-target')?.getAttribute('aria-label')?.replace(/^\w+ comment by /, '') ?? '');
 
 test('n and p walk the comments while N and P skip whole threads', async ({ page }) => {
+  await pinSettings(page, { autoExpand: false });
   await mockAPI(page);
   await mockComments(page);
   await page.goto('/item?id=1');

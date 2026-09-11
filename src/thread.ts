@@ -24,6 +24,19 @@ export function ancestorsOf(index: ThreadIndex, id: number): number[] {
   return path;
 }
 
+// Past this depth the thread stops indenting, so opening a reply there is
+// where a reader most needs to have chosen to.
+export const FLAT_DEPTH = 3;
+// A subtree this small unfurls entirely in one go, because a comment with no
+// more than three below it has children with no more than two.
+const AUTO_OPEN = 3;
+
+// What a click costs is the screen the whole subtree takes, not the number of
+// replies directly under the comment.
+export function opensByDefault(entry?: ThreadEntry) {
+  return !!entry && entry.total > 0 && entry.total <= AUTO_OPEN && entry.depth < FLAT_DEPTH;
+}
+
 export type Thread = { index: ThreadIndex; author?: string };
 const ThreadContext = createContext<Thread>({ index: new Map() });
 export const ThreadProvider = ThreadContext.Provider;
