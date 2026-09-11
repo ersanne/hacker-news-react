@@ -27,6 +27,11 @@ depends = ["install"]
 run = "npm run test:e2e"
 description = "Run Playwright end-to-end tests"
 
+[tasks.lint]
+depends = ["install"]
+run = "npm run lint"
+description = "Lint the sources"
+
 [tasks.typecheck]
 depends = ["install"]
 run = "npm run typecheck"

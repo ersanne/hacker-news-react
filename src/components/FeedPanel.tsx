@@ -3,7 +3,7 @@ import { clearCache, getFeed, getItems, type Feed, type ItemResult } from '../ap
 import { ExternalLink, Failure, Icon, Skeleton } from './ui';
 import StoryList from './StoryList';
 
-export const feedInfo = {
+const feedInfo = {
   top: { title: 'The front page', description: 'What’s catching the community’s attention.' },
   new: { title: 'Fresh off the keyboard', description: 'The latest submissions, as they arrive.' },
   best: { title: 'Worth your time', description: 'The stories that stayed with the community.' },

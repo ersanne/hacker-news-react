@@ -39,7 +39,7 @@ async function request<T>(url: string): Promise<T> {
   const promise = limited(async () => {
     const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error('Hacker News could not be reached. Please try again.');
-    const value: T = await response.json();
+    const value = await response.json() as T;
     cache.delete(url);
     cache.set(url, { value, expires: Date.now() + TTL });
     if (cache.size > 3000) cache.delete(cache.keys().next().value!);

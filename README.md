@@ -33,6 +33,7 @@ Original articles, author profiles, and participation links open on their respec
 
 ```sh
 npm run typecheck
+npm run lint
 npm test
 npx playwright install --with-deps chromium
 npm run test:e2e
