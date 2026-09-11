@@ -1,9 +1,10 @@
 import DOMPurify from 'dompurify';
+import { safeUrl } from './format';
 
 // HN sends almost no markup: paragraphs, links, italics and code blocks. Every
 // other convention in a comment — quotes, lists, backticks — is plain text the
 // author typed, and each pass below lifts one of them into real markup.
-const COMMENT_TAGS = ['p', 'a', 'em', 'i', 'strong', 'b', 'code', 'pre', 'blockquote', 'br', 'ul', 'ol', 'li'];
+export const COMMENT_TAGS = ['p', 'a', 'em', 'i', 'strong', 'b', 'code', 'pre', 'blockquote', 'br', 'ul', 'ol', 'li', 'sup'];
 // Attributes reach the render from here, so each tag names the ones it may
 // carry rather than forwarding whatever survived sanitising.
 const ATTRIBUTES: Record<string, string[]> = { a: ['href', 'title'], ol: ['start'] };
@@ -167,6 +168,53 @@ function markCodeSpans(root: ParentNode) {
   }
 }
 
+const FOOTNOTE = /^\s*\[(\d{1,2})\]\s+(https?:\/\/\S+)/;
+
+// A comment that cites its sources writes "[1] https://…" on a line of its own
+// and "[1]" where the claim is, so the marker is joined up to what it names.
+function linkFootnotes(root: ParentNode) {
+  const notes = new Map<string, string>();
+  const definitions = new Set<Element>();
+  for (const line of root.querySelectorAll('p, li')) {
+    const note = FOOTNOTE.exec(line.textContent ?? '');
+    if (!note) continue;
+    // HN shortens a long URL in the text it shows but not in the href, so the
+    // link it made is a truer source than the line reads as.
+    const url = safeUrl(line.querySelector('a')?.getAttribute('href') ?? undefined) ?? safeUrl(note[2]);
+    if (!url) continue;
+    notes.set(note[1], url);
+    definitions.add(line);
+  }
+  if (!notes.size) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const marks: Text[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!(node.nodeValue ?? '').includes('[') || isLiteral(node)) continue;
+    if (![...definitions].some(line => line.contains(node))) marks.push(node as Text);
+  }
+  for (const text of marks) {
+    const value = text.nodeValue ?? '';
+    const pattern = /\[(\d{1,2})\]/g;
+    const pieces = document.createDocumentFragment();
+    let read = 0;
+    for (let match = pattern.exec(value); match; match = pattern.exec(value)) {
+      const url = notes.get(match[1]);
+      if (!url) continue;
+      if (match.index > read) pieces.append(value.slice(read, match.index));
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      const mark = document.createElement('sup');
+      mark.textContent = match[0];
+      link.append(mark);
+      pieces.append(link);
+      read = match.index + match[0].length;
+    }
+    if (!read) continue;
+    if (read < value.length) pieces.append(value.slice(read));
+    text.replaceWith(pieces);
+  }
+}
+
 function toNode(node: Node): RichNode | null {
   if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? '';
   if (node.nodeType !== Node.ELEMENT_NODE) return null;
@@ -192,5 +240,6 @@ export function parseComment(value: string): RichNode[] {
   liftQuotes(template.content);
   liftLists(template.content);
   markCodeSpans(template.content);
+  linkFootnotes(template.content);
   return [...template.content.childNodes].flatMap(child => toNode(child) ?? []);
 }

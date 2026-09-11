@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseComment, type RichNode } from './richtext';
+import { COMMENT_TAGS, parseComment, type RichNode } from './richtext';
 
 // The tree renders through React, so assertions read it back as the markup it
 // stands for rather than walking nested objects. Text is escaped the way React
@@ -27,7 +27,7 @@ describe('comment text conventions', () => {
   });
   it('admits no tag the renderer does not name, whatever reaches it', () => {
     const nasty = '<p>text<iframe src="x"></iframe><form><input><button>go</button></form><style>p{}</style><svg><use href="#x"/></svg></p>';
-    expect(tags(parseComment(nasty)).filter(tag => !['p', 'a', 'em', 'i', 'strong', 'b', 'code', 'pre', 'blockquote', 'br', 'ul', 'ol', 'li'].includes(tag))).toEqual([]);
+    expect(tags(parseComment(nasty)).filter(tag => !COMMENT_TAGS.includes(tag))).toEqual([]);
   });
   it('gives the opening block of a comment the paragraph HN leaves off', () => {
     expect(parse('First line<p>Second line')).toBe('<p>First line</p><p>Second line</p>');
@@ -90,6 +90,17 @@ describe('comment text conventions', () => {
   });
   it('reads a code span as text, so markup inside one cannot escape it', () => {
     expect(parse('<p>`&lt;b&gt;bold&lt;/b&gt;`</p>')).toBe('<p><code>&lt;b&gt;bold&lt;/b&gt;</code></p>');
+  });
+  it('joins a footnote marker up to the source it names', () => {
+    expect(parse('<p>As shown [1]</p><p>[1] https://example.com/paper</p>'))
+      .toBe('<p>As shown <a href="https://example.com/paper"><sup>[1]</sup></a></p><p>[1] https://example.com/paper</p>');
+  });
+  it('links a marker only where the comment defines one, and never to a scheme it rejects', () => {
+    expect(parse('<p>See [2] for this</p><p>[1] https://example.com</p>'))
+      .toBe('<p>See [2] for this</p><p>[1] https://example.com</p>');
+    expect(parse('<p>Trust me [1]</p><p>[1] javascript:alert(1)</p>')).toBe('<p>Trust me [1]</p><p>[1] javascript:alert(1)</p>');
+    expect(parse('<pre><code>arr[1]</code></pre><p>[1] https://example.com</p>'))
+      .toBe('<pre><code>arr[1]</code></pre><p>[1] https://example.com</p>');
   });
   it('keeps whitespace between inline elements intact', () => {
     expect(parse('<p><i>foo</i> bar <b>baz</b></p>')).toBe('<p><i>foo</i> bar <b>baz</b></p>');
