@@ -58,6 +58,25 @@ describe('comment text conventions', () => {
     expect(parse('<p>&gt; see <a href="https://example.com">this</a>\n&gt; and that</p>'))
       .toBe('<blockquote><p>see <a href="https://example.com">this</a></p><p>and that</p></blockquote>');
   });
+  it('lifts a run of marked lines into a list', () => {
+    expect(parse('<p>- one</p><p>- two</p>')).toBe('<ul><li>one</li><li>two</li></ul>');
+    expect(parse('<p>1. one</p><p>2. two</p>')).toBe('<ol><li>one</li><li>two</li></ol>');
+    expect(parse('<p>Checklists:\n- one\n- two</p>')).toBe('<p>Checklists:</p><ul><li>one</li><li>two</li></ul>');
+  });
+  it('leaves a single dashed line as the aside it probably is', () => {
+    expect(parse('<p>- and that is the point</p>')).toBe('<p>- and that is the point</p>');
+    expect(parse('<p>1985. A good year</p><p>Unrelated</p>')).toBe('<p>1985. A good year</p><p>Unrelated</p>');
+  });
+  it('lifts a numbered list only where the numbers read as one', () => {
+    expect(parse('<p>0. zero</p><p>1. one</p>')).toBe('<ol start="0"><li>zero</li><li>one</li></ol>');
+    // Lines that merely begin with a figure — years, versions, a list resumed
+    // from an earlier comment — are left as the prose they are.
+    expect(parse('<p>1985. A good year</p><p>2001. Another</p>')).toBe('<p>1985. A good year</p><p>2001. Another</p>');
+    expect(parse('<p>9. nine</p><p>2. two</p>')).toBe('<p>9. nine</p><p>2. two</p>');
+  });
+  it('lifts a list that was typed inside a quote', () => {
+    expect(parse('<p>&gt; - one</p><p>&gt; - two</p>')).toBe('<blockquote><ul><li>one</li><li>two</li></ul></blockquote>');
+  });
   it('keeps whitespace between inline elements intact', () => {
     expect(parse('<p><i>foo</i> bar <b>baz</b></p>')).toBe('<p><i>foo</i> bar <b>baz</b></p>');
   });

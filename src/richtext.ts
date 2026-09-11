@@ -30,9 +30,11 @@ const QUOTE = /^(\s*>+)\s?/;
 // Deep enough for a reply quoting a reply; past that the indent costs more
 // column than the nesting explains.
 const MAX_QUOTE = 4;
+const BULLET = /^\s*[-*]\s+(?=\S)/;
+const NUMBER = /^\s*(\d{1,3})[.)]\s+(?=\S)/;
 // A marker only means anything at the start of a line, so a paragraph is split
 // into lines exactly when one of them carries one.
-const MARKERS = [QUOTE];
+const MARKERS = [QUOTE, BULLET, NUMBER];
 
 // HN starts a paragraph at a blank line and leaves a single newline in the
 // text, where it renders as a space. Lines that open with a marker were meant
@@ -83,6 +85,50 @@ function liftQuotes(root: ParentNode) {
   }
 }
 
+type Item = { paragraph: HTMLParagraphElement; ordered: boolean; number: number };
+
+function listItem(paragraph: HTMLParagraphElement): Item | null {
+  const text = paragraph.textContent ?? '';
+  if (BULLET.test(text)) return { paragraph, ordered: false, number: 0 };
+  const numbered = NUMBER.exec(text);
+  return numbered ? { paragraph, ordered: true, number: Number(numbered[1]) } : null;
+}
+
+function buildList(items: Item[]) {
+  const { ordered } = items[0];
+  const numbers = items.map(item => item.number);
+  // A numbered list that does not start at the top or does not climb is prose
+  // that happens to begin with a figure.
+  if (ordered && (numbers[0] > 1 || numbers.some((value, index) => index && value < numbers[index - 1]))) return;
+  const list = document.createElement(ordered ? 'ol' : 'ul');
+  if (ordered && numbers[0] !== 1) list.setAttribute('start', String(numbers[0]));
+  items[0].paragraph.replaceWith(list);
+  for (const { paragraph } of items) {
+    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+    const first = walker.nextNode();
+    if (first) first.nodeValue = (first.nodeValue ?? '').replace(ordered ? NUMBER : BULLET, '');
+    const entry = document.createElement('li');
+    entry.append(...paragraph.childNodes);
+    paragraph.remove();
+    list.append(entry);
+  }
+}
+
+// A dash opens an aside as often as it opens a list, so a run of lines is
+// lifted only once a second line agrees with the first.
+function liftLists(root: ParentNode) {
+  let run: Item[] = [];
+  const flush = () => { if (run.length > 1) buildList(run); run = []; };
+  for (const paragraph of [...root.querySelectorAll('p')]) {
+    const item = listItem(paragraph);
+    if (!item) { flush(); continue; }
+    const last = run[run.length - 1];
+    if (last && (last.ordered !== item.ordered || last.paragraph.nextElementSibling !== paragraph)) flush();
+    run.push(item);
+  }
+  flush();
+}
+
 function toNode(node: Node): RichNode | null {
   if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? '';
   if (node.nodeType !== Node.ELEMENT_NODE) return null;
@@ -99,12 +145,13 @@ function toNode(node: Node): RichNode | null {
 
 // The tree is what the comment renders from, so the tags it can carry are
 // fixed here as well as in the sanitiser: a fault in a pass above can lose
-// content, but it cannot introduce markup neither list names.
+// content, but it cannot introduce markup that neither list names.
 export function parseComment(value: string): RichNode[] {
   const template = document.createElement('template');
   template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: COMMENT_TAGS, ALLOWED_ATTR: ['href', 'title'] });
   wrapLeadingBlock(template.content);
   for (const paragraph of [...template.content.querySelectorAll('p')]) splitLines(paragraph);
   liftQuotes(template.content);
+  liftLists(template.content);
   return [...template.content.childNodes].flatMap(child => toNode(child) ?? []);
 }
