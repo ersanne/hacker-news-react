@@ -36,7 +36,7 @@ Original articles, profiles and reply links open on their own sites. Accounts, v
 
 ## Quick start
 
-Node 22.12 or newer. Versions are pinned in `mise.toml`, and the Node major in `.nvmrc` for nvm.
+Node 24.15 or newer. Versions are pinned in `mise.toml`, and the Node major in `.nvmrc` for nvm.
 
 ```sh
 mise install     # optional, installs the pinned Node and pnpm
