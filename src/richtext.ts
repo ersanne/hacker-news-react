@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import { safeUrl } from './format';
+import { domain, safeUrl } from './format';
 
 // HN sends almost no markup: paragraphs, links, italics and code blocks. Every
 // other convention in a comment — quotes, lists, backticks — is plain text the
@@ -215,6 +215,30 @@ function linkFootnotes(root: ParentNode) {
   }
 }
 
+// Long enough that an ordinary link still reads whole, short enough that a
+// URL with a session token in it stops setting the width of the column.
+const MAX_LINK = 55;
+const SEGMENT = 24;
+
+// HN links a bare URL using the URL as its own text, which can be longer than
+// the column. Only the text is shortened — the href still goes where it said,
+// and the title discloses it in full.
+function shortenLinks(root: ParentNode) {
+  for (const link of root.querySelectorAll('a')) {
+    if (link.closest('pre')) continue;
+    const text = (link.textContent ?? '').trim();
+    const href = safeUrl(link.getAttribute('href') ?? undefined);
+    if (!href || text.length <= MAX_LINK || !/^https?:\/\//i.test(text)) continue;
+    // A trailing ellipsis is HN having already shortened this one.
+    if (/(\.\.\.|…)$/.test(text)) continue;
+    const segments = new URL(href).pathname.split('/').filter(Boolean);
+    const last = segments[segments.length - 1] ?? '';
+    const tail = last.length > SEGMENT ? `${last.slice(0, SEGMENT)}…` : last;
+    link.setAttribute('title', href);
+    link.textContent = !tail ? domain(href) : `${domain(href)}/${segments.length > 1 ? '…/' : ''}${tail}`;
+  }
+}
+
 function toNode(node: Node): RichNode | null {
   if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? '';
   if (node.nodeType !== Node.ELEMENT_NODE) return null;
@@ -241,5 +265,6 @@ export function parseComment(value: string): RichNode[] {
   liftLists(template.content);
   markCodeSpans(template.content);
   linkFootnotes(template.content);
+  shortenLinks(template.content);
   return [...template.content.childNodes].flatMap(child => toNode(child) ?? []);
 }

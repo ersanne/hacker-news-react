@@ -102,6 +102,20 @@ describe('comment text conventions', () => {
     expect(parse('<pre><code>arr[1]</code></pre><p>[1] https://example.com</p>'))
       .toBe('<pre><code>arr[1]</code></pre><p>[1] https://example.com</p>');
   });
+  it('shortens a link that is nothing but a long URL, without moving where it goes', () => {
+    const long = 'https://example.com/2026/09/a-very-long-article-slug-indeed?utm_source=hn&utm_campaign=x';
+    expect(parse(`<p><a href="${long}">${long}</a></p>`))
+      .toBe(`<p><a href="${long}" title="${long}">example.com/…/a-very-long-article-slug…</a></p>`);
+  });
+  it('leaves link text alone where shortening it would say less than it does', () => {
+    expect(parse('<p><a href="https://example.com/a">https://example.com/a</a></p>'))
+      .toBe('<p><a href="https://example.com/a">https://example.com/a</a></p>');
+    const long = 'https://example.com/2026/09/a-very-long-article-slug-indeed-and-then-some';
+    expect(parse(`<p><a href="${long}">a thoughtful piece on why this matters more than it seems</a></p>`))
+      .toBe(`<p><a href="${long}">a thoughtful piece on why this matters more than it seems</a></p>`);
+    expect(parse(`<p><a href="${long}">https://example.com/2026/09/a-very-long-article-slug-inde...</a></p>`))
+      .toBe(`<p><a href="${long}">https://example.com/2026/09/a-very-long-article-slug-inde...</a></p>`);
+  });
   it('keeps whitespace between inline elements intact', () => {
     expect(parse('<p><i>foo</i> bar <b>baz</b></p>')).toBe('<p><i>foo</i> bar <b>baz</b></p>');
   });
