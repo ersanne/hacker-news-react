@@ -288,6 +288,17 @@ function toNode(node: Node): RichNode | null {
 // The tree is what the comment renders from, so the tags it can carry are
 // fixed here as well as in the sanitiser: a fault in a pass above can lose
 // content, but it cannot introduce markup that neither list names.
+// A comment reduced to what it says, for the places that quote one rather
+// than render it. Sanitising first means a script's content is gone, not
+// merely unrendered, and blocks are parted so two paragraphs do not run
+// together into one word.
+export function plainText(value: string) {
+  const template = document.createElement('template');
+  template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: COMMENT_TAGS, ALLOWED_ATTR: [] });
+  for (const block of template.content.querySelectorAll('p, li, blockquote, pre, br')) block.after(' ');
+  return (template.content.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
 export function parseComment(value: string): RichNode[] {
   const template = document.createElement('template');
   template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: COMMENT_TAGS, ALLOWED_ATTR: ['href', 'title'] });

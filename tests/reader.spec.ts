@@ -113,7 +113,8 @@ test('deep threads preserve deleted parents and do not overflow', async ({ page 
   await mockComments(page);
   await page.goto('/item?id=1');
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Show 1 reply', exact: true }).click();
-  await expect(page.getByText('A surviving reply below a deleted comment.')).toBeVisible();
+  // The peek above the flattened reply quotes this same comment.
+  await expect(page.getByText('A surviving reply below a deleted comment.', { exact: true })).toBeVisible();
   await expect(page.getByText('This comment is no longer available.')).toBeVisible();
   await expect(page.getByText('unbroken'.repeat(80))).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

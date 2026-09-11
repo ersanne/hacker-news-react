@@ -206,7 +206,10 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .replies .comment { padding: 10px 0 17px; }
 .replies .comment:last-child { border-bottom: 0; padding-bottom: 0; }
 .flat-thread .replies { margin-left: 0; padding-left: 17px; border-left-style: dashed; }
-.flat-thread .replies::before { content: '↳ Continuing thread'; display: block; font-size: 9px; color: var(--muted); margin-bottom: 10px; }
+.parent-peek { display: flex; align-items: baseline; gap: 6px; width: 100%; text-align: left; background: transparent; border: 0; padding: 0 0 11px; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.parent-peek span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.parent-peek:hover { color: var(--accent); }
+.parent-peek b { font-weight: 600; }
 .collapsed-note, .missing-comment { color: var(--muted); font-size: 11px; font-style: italic; }
 .discussion-end { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; font-size: 9px; color: var(--muted); padding: 28px 0 10px; }
 .small-empty { padding: 40px 24px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.7; }

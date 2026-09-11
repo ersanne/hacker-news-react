@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ancestorsOf, indexThread, opensByDefault } from './thread';
+import { ancestorsOf, excerpt, indexThread, opensByDefault } from './thread';
 import type { Comment } from './api';
 
 const comment = (id: number, kids: Comment[] = [], by = `user${id}`): Comment =>
@@ -39,6 +39,12 @@ describe('a discussion as a tree', () => {
     const index = indexThread([comment(1, [comment(2, [comment(3, [comment(4, [comment(5)])])])])]);
     expect(index.get(4)?.depth).toBe(3);
     expect(opensByDefault(index.get(4))).toBe(false);
+  });
+  it('cuts an excerpt on a word, and leaves short text whole', () => {
+    expect(excerpt('short enough', 20)).toBe('short enough');
+    expect(excerpt('a sentence that runs past the limit given', 20)).toBe('a sentence that…');
+    // No word boundary worth cutting on, so the cut falls where it must.
+    expect(excerpt('supercalifragilistic', 10)).toBe('supercalif…');
   });
   it('reads an empty discussion as an empty index', () => {
     expect(indexThread([]).size).toBe(0);

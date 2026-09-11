@@ -108,3 +108,23 @@ test('a thin reply thread opens on its own, and a longer one waits', async ({ pa
   await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
   await expect(page.getByText('A surviving reply below a deleted comment.')).toBeHidden();
 });
+
+test('a reply past the flattening depth names the comment it answers', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  // The chain runs simonw → ada → removed → grace → deepreader. Everything
+  // under ada is thin enough to open on its own, and grace sits at the depth
+  // where that stops, so the last reply is opened deliberately.
+  await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).click();
+  await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).click();
+
+  // Only that last reply has lost the indent that said what it answers.
+  const peeks = discussion.locator('.parent-peek');
+  await expect(peeks).toHaveCount(1);
+  await expect(peeks).toContainText('In reply to grace: A surviving reply below a deleted comment.');
+
+  await peeks.click();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-comment-id'))).toBe('3000');
+});

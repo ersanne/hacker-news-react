@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COMMENT_TAGS, parseComment, type RichNode } from './richtext';
+import { COMMENT_TAGS, parseComment, plainText, type RichNode } from './richtext';
 
 // The tree renders through React, so assertions read it back as the markup it
 // stands for rather than walking nested objects. Text is escaped the way React
@@ -124,6 +124,12 @@ describe('comment text conventions', () => {
     expect(parse('<pre><code>\n  one   \n  two\n\n</code></pre>')).toBe('<pre><code>one\ntwo</code></pre>');
     expect(parse('<pre><code>  see <a href="https://example.com">docs</a>\n  done</code></pre>'))
       .toBe('<pre><code>see <a href="https://example.com">docs</a>\ndone</code></pre>');
+  });
+  it('reduces a comment to what it says, parting the blocks it was written in', () => {
+    expect(plainText('<p>First</p><p>Second</p>')).toBe('First Second');
+    expect(plainText('Tom &amp; Jerry &lt;3')).toBe('Tom & Jerry <3');
+    expect(plainText('<p>Kept<script>alert(1)</script></p>')).toBe('Kept');
+    expect(plainText('')).toBe('');
   });
   it('keeps whitespace between inline elements intact', () => {
     expect(parse('<p><i>foo</i> bar <b>baz</b></p>')).toBe('<p><i>foo</i> bar <b>baz</b></p>');

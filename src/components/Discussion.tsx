@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getComments, getItem, type Comment, type HNItem } from '../api';
 import { domain, hnUrl, plainTitle, safeUrl, shareUrl } from '../format';
-import { FLAT_DEPTH, indexThread, opensByDefault, ThreadProvider, useThread } from '../thread';
+import { excerpt, FLAT_DEPTH, indexThread, opensByDefault, ThreadProvider, useThread } from '../thread';
+import { plainText } from '../richtext';
 import { useViewSettings } from '../settings';
 import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, SaveButton, ShareButton, Skeleton, Time } from './ui';
 import RichText from './RichText';
@@ -14,9 +15,25 @@ const BATCH = 20;
 
 // The whole thread arrives in one response, so a long one is revealed a batch
 // at a time to keep the first render short.
-function CommentBatch({ comments, depth = 0 }: { comments: Comment[]; depth?: number }) {
+// Below the depth at which the thread stops indenting there is nothing left to
+// say which comment a reply answers, so the parent says it itself.
+function ParentPeek({ comment }: { comment: Comment }) {
+  const said = useMemo(() => excerpt(plainText(comment.text ?? '')), [comment.text]);
+  function reveal() {
+    const target = document.querySelector<HTMLElement>(`.discussion-panel:not([hidden]) [data-comment-id="${comment.id}"]`);
+    target?.scrollIntoView({ block: 'center' });
+    target?.focus({ preventScroll: true });
+  }
+  return <button type="button" className="parent-peek" onClick={reveal}>
+    <span aria-hidden="true">↑</span>
+    {comment.removed ? <span>In reply to a removed comment</span> : <span>In reply to <b>{comment.by ?? 'unknown author'}</b>{said && `: ${said}`}</span>}
+  </button>;
+}
+
+function CommentBatch({ comments, depth = 0, parent }: { comments: Comment[]; depth?: number; parent?: Comment }) {
   const [shown, setShown] = useState(BATCH);
   return <div className={depth ? 'replies' : 'comments-list'}>
+    {depth > FLAT_DEPTH && parent && <ParentPeek comment={parent} />}
     {comments.slice(0, shown).map(comment => <CommentView key={comment.id} comment={comment} depth={depth} />)}
     {shown < comments.length && <button className="text-button more-comments" onClick={() => setShown(shown + BATCH)}>Show more {depth ? 'replies' : 'comments'} <span aria-hidden="true">↓</span></button>}
   </div>;
@@ -47,7 +64,7 @@ function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
     <div hidden={collapsed}>
       {comment.removed ? <p className="missing-comment">This comment is no longer available.</p> : <RichText text={comment.text ?? ''} />}
       {replies.length > 0 && <button className="reply-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><span className={expanded ? 'rotated' : ''}><Icon name="chevron" size={12} /></span>{expanded ? 'Hide replies' : `Show ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}</button>}
-      {expanded && <CommentBatch comments={replies} depth={depth + 1} />}
+      {expanded && <CommentBatch comments={replies} depth={depth + 1} parent={comment} />}
     </div>
   </article>;
 }

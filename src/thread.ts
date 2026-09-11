@@ -37,6 +37,15 @@ export function opensByDefault(entry?: ThreadEntry) {
   return !!entry && entry.total > 0 && entry.total <= AUTO_OPEN && entry.depth < FLAT_DEPTH;
 }
 
+// Long enough to recognise which comment is meant, short enough to stay one
+// line above the replies it introduces.
+export function excerpt(text: string, limit = 90) {
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > limit / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
 export type Thread = { index: ThreadIndex; author?: string };
 const ThreadContext = createContext<Thread>({ index: new Map() });
 export const ThreadProvider = ThreadContext.Provider;
