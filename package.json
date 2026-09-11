@@ -2,13 +2,14 @@
   "name": "hn-reader",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@11.4.0",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc -b",
     "lint": "eslint .",

@@ -4,12 +4,12 @@ A quieter way to read Hacker News. A small, read-only React application with a d
 
 ## Run locally
 
-Use **Node.js 22.12 or newer**. The exact version is pinned in `mise.toml` (and the major in `.nvmrc` for nvm users).
+Use **Node.js 22.12 or newer**. The exact version, and the pnpm version, are pinned in `mise.toml` (the Node major is also in `.nvmrc` for nvm users).
 
 ```sh
 mise install
-npm ci
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 With [mise](https://mise.jdx.dev) the scripts are also available as tasks: `mise run dev`, `build`, `test`, `test-e2e`, `typecheck`.
@@ -36,13 +36,13 @@ Original articles, author profiles, and participation links open on their respec
 ## Development and checks
 
 ```sh
-npm run typecheck
-npm run lint
-npm test
-npx playwright install --with-deps chromium
-npm run test:e2e
-npm run build
-npm run preview
+pnpm run typecheck
+pnpm run lint
+pnpm test
+pnpm exec playwright install --with-deps chromium
+pnpm run test:e2e
+pnpm run build
+pnpm run preview
 ```
 
 Vitest covers the request cache, concurrency, ordering, failed requests, search-result mapping, and untrusted HTML. Playwright runs deterministic API fixtures on desktop Chromium and an emulated phone, covering reading, navigation, pagination, search, shortcuts, the article pane, saved stories, prefetching, themes, partial failures, and deep threads. Screenshots and traces for failed tests are saved under `test-results/`.
@@ -57,6 +57,6 @@ Theme, article view, the “Hide read” setting, and the latest 2,000 opened an
 
 ## Hosting
 
-`npm run build` produces `dist/`. Netlify settings and an SPA fallback are included. On another static host, route unknown paths to `index.html` so direct discussion links work. No deployment is performed by the build command.
+`pnpm run build` produces `dist/`, including a `404.html` copy of `index.html`: GitHub Pages serves that file for unknown paths, which is what keeps direct discussion links working. `.github/workflows/pages.yml` runs the checks and publishes `dist/` to GitHub Pages from `main`; Pages must be set to the GitHub Actions source in the repository settings. A project site is served under `/<repository>/`, so the workflow passes that path to the build in `BASE_PATH`; the build defaults to the domain root otherwise. No deployment is performed by the build command itself.
 
 This rebuild replaces the original Vue 2/Vuetify prototype. The original implementation remains in Git history.
