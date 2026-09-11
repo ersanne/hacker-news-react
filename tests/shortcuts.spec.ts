@@ -133,7 +133,7 @@ test('x collapses the focused comment and n carries on past the first batch', as
 
   await page.keyboard.press('n');
   await page.keyboard.press('x');
-  await expect(discussion.locator('.collapsed-note')).toHaveText('Comment collapsed · 1 direct reply');
+  await expect(discussion.locator('.collapsed-note')).toHaveText('Comment collapsed · 4 replies');
   await page.keyboard.press('x');
   await expect(discussion.locator('.collapsed-note')).toHaveCount(0);
 

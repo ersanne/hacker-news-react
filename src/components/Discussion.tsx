@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getComments, getItem, type Comment, type HNItem } from '../api';
 import { domain, hnUrl, plainTitle, safeUrl, shareUrl } from '../format';
+import { indexThread, ThreadProvider, useThread } from '../thread';
 import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, SaveButton, ShareButton, Skeleton, Time } from './ui';
 import RichText from './RichText';
 
@@ -21,10 +22,14 @@ function CommentBatch({ comments, depth = 0 }: { comments: Comment[]; depth?: nu
 }
 
 function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
+  const { index } = useThread();
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const replies = comment.kids;
-  return <article className={`comment ${depth >= 3 ? 'flat-thread' : ''}`} tabIndex={-1}>
+  // What a collapsed comment hides is its whole subtree, not the replies
+  // directly under it, so that is the number worth reporting.
+  const total = index.get(comment.id)?.total ?? replies.length;
+  return <article className={`comment ${depth >= 3 ? 'flat-thread' : ''}`} data-comment-id={comment.id} tabIndex={-1}>
     <div className="comment-header">
       <button className="collapse-target" aria-label={`${collapsed ? 'Expand' : 'Collapse'} comment by ${comment.by ?? 'unknown author'}`} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)} />
       <span className="collapse-mark" aria-hidden="true">{collapsed ? '+' : '−'}</span>
@@ -32,7 +37,7 @@ function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
       <span className="comment-author">{comment.removed ? 'Removed comment' : <Author name={comment.by} />}</span>
       <Time value={comment.time} />
     </div>
-    {collapsed && <span className="collapsed-note">Comment collapsed{replies.length ? ` · ${replies.length} direct ${replies.length === 1 ? 'reply' : 'replies'}` : ''}</span>}
+    {collapsed && <span className="collapsed-note">Comment collapsed{total ? ` · ${total} ${total === 1 ? 'reply' : 'replies'}` : ''}</span>}
     <div hidden={collapsed}>
       {comment.removed ? <p className="missing-comment">This comment is no longer available.</p> : <RichText text={comment.text ?? ''} />}
       {replies.length > 0 && <button className="reply-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><span className={expanded ? 'rotated' : ''}><Icon name="chevron" size={12} /></span>{expanded ? 'Hide replies' : `Show ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}</button>}
@@ -85,6 +90,9 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
     if (!comments || order === 'hn') return comments ?? [];
     return [...comments].sort((a, b) => order === 'newest' ? b.id - a.id : a.id - b.id);
   }, [comments, order]);
+  // Built from the thread as it arrived, so re-sorting the roots does not
+  // rebuild what is true of every comment regardless of order.
+  const thread = useMemo(() => ({ index: indexThread(comments ?? []), author: item?.by }), [comments, item?.by]);
   const unavailable = !item || item.deleted || item.dead;
   const supported = !item?.type || ['story', 'job'].includes(item.type);
   return <section className="discussion-panel" hidden={!active} aria-label="Discussion">
@@ -110,7 +118,7 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
           {!showArticle && <div className="article-links">{url && <Link to={articleTo} className="article-link">Read <Icon name="reader" size={16} /></Link>}<OpenIn url={url} id={id} title={plainTitle(item.title)} /></div>}
         </header>
         {item.text && <div className="story-body"><RichText text={item.text} /></div>}
-        {!supported ? <div className="small-empty"><p>{item.type === 'comment' ? 'This link points to a comment rather than a story, and the thread it belongs to lives on Hacker News.' : 'Continue reading this item on Hacker News.'}</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div>{commentsError ? <Failure retry={() => setCommentsAttempt(commentsAttempt + 1)}>Couldn’t load the comments. A story posted in the last few minutes may not be searchable yet.</Failure> : !comments ? <Skeleton rows={3} /> : threads.length ? <CommentBatch key={order} comments={threads} /> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
+        {!supported ? <div className="small-empty"><p>{item.type === 'comment' ? 'This link points to a comment rather than a story, and the thread it belongs to lives on Hacker News.' : 'Continue reading this item on Hacker News.'}</p><ExternalLink href={hnUrl(id)}>Open on HN <Icon name="arrow" size={14} /></ExternalLink></div> : <><div className="discussion-label"><h3><Icon name="comment" size={18} />The conversation <span>{item.descendants ?? 0}</span></h3><label className="sort-control">Sort<select aria-label="Comment order" value={order} onChange={event => setOrder(event.target.value as Order)}>{orders.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div>{commentsError ? <Failure retry={() => setCommentsAttempt(commentsAttempt + 1)}>Couldn’t load the comments. A story posted in the last few minutes may not be searchable yet.</Failure> : !comments ? <Skeleton rows={3} /> : threads.length ? <ThreadProvider value={thread}><CommentBatch key={order} comments={threads} /></ThreadProvider> : <div className="small-empty"><Icon name="comment" size={28} /><p>A little quiet here, for now.</p><ExternalLink href={hnUrl(id)}>Join the conversation on HN <Icon name="arrow" size={14} /></ExternalLink></div>}</>}
         <div className="discussion-end"><span>That’s the conversation, at your pace.</span><ExternalLink href={hnUrl(id)}>Reply on Hacker News <Icon name="arrow" size={13} /></ExternalLink></div>
       </div>}
     </div>
