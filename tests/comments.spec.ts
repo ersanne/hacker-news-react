@@ -16,3 +16,34 @@ test('an HN item link opens in the reader while other links leave it', async ({ 
   await expect(discussion.getByRole('heading', { level: 2 })).toHaveText('The quiet craft of building software that lasts');
   expect(context.pages()).toHaveLength(1);
 });
+
+test('the conventions a comment types come through as the markup they meant', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=66');
+  const comment = page.locator('.discussion-panel:not([hidden]) .comment .prose');
+
+  await expect(comment.locator('code').first()).toHaveText('pnpm build');
+  await expect(comment.locator('blockquote blockquote p')).toHaveText('nested deeper');
+  await expect(comment.locator('ul li')).toHaveText(['first item', 'second item']);
+  await expect(comment.locator('sup')).toHaveText('[1]');
+  // The indent that marked the block as code is not part of the code.
+  await expect(comment.locator('pre')).toHaveText('one\n  two\nthree');
+});
+
+test('a code block can be copied, and the thread keys still work from its button', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'The clipboard permission is a desktop Chrome grant');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=66');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+
+  await discussion.getByRole('button', { name: 'Copy code' }).click();
+  await expect(discussion.getByText('Copied')).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('one\n  two\nthree');
+
+  // Focus inside a comment body still belongs to the comment it sits in.
+  await page.keyboard.press('n');
+  await expect.poll(() => page.evaluate(() => document.activeElement?.className)).toContain('comment');
+});

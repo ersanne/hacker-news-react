@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ago, archiveUrl, domain, faviconUrl, hnUrl } from '../format';
+import { copyText, useOutcome, type CopyState } from '../copy';
 
-export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus' | 'share'; size?: number }) {
+export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus' | 'share' | 'copy'; size?: number }) {
   const paths = {
     arrow: <><path d="M7 17 17 7M7 7h10v10" /></>,
     back: <><path d="m12 5-7 7 7 7M5 12h14" /></>,
@@ -15,6 +16,7 @@ export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' |
     star: <path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8Z" />,
     reader: <><path d="M4 5h16v14H4z" /><path d="M7 9h10M7 12.5h10M7 16h6" /></>,
     embed: <><path d="M3 5h18v14H3z" /><path d="M3 9h18" /><path d="M6 7h.01M9 7h.01" /></>,
+    copy: <><path d="M9 9h10v10H9z" /><path d="M15 9V5H5v10h4" /></>,
     share: <><path d="M12 15V4m0 0L8.5 7.5M12 4l3.5 3.5" /><path d="M5 13v6h14v-6" /></>,
     sliders: <><path d="M4 7h10m4 0h2M4 17h4m4 0h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
     focus: <><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" /></>,
@@ -40,7 +42,7 @@ export function SaveButton({ saved, onToggle, title, className = '' }: { saved: 
     aria-label={`${saved ? 'Remove' : 'Save'} ${title}`} title={saved ? 'Remove from saved' : 'Save story'}
     onClick={event => { event.preventDefault(); event.stopPropagation(); onToggle(); }}><Icon name="star" size={14} /></button>;
 }
-type ShareState = 'idle' | 'copied' | 'failed';
+type ShareState = CopyState;
 const canShare = typeof navigator.share === 'function';
 
 // The system share sheet where there is one, the clipboard everywhere else.
@@ -50,18 +52,11 @@ async function shareLink(url: string, title: string): Promise<ShareState> {
     try { await navigator.share({ title, url }); return 'idle'; }
     catch (error) { if ((error as Error).name === 'AbortError') return 'idle'; }
   }
-  try { await navigator.clipboard.writeText(url); return 'copied'; }
-  catch { return 'failed'; }
+  return copyText(url);
 }
-// The outcome shows in the control that was pressed, then clears itself.
 function useShare(): [ShareState, (url: string, title: string) => void] {
-  const [state, setState] = useState<ShareState>('idle');
-  useEffect(() => {
-    if (state === 'idle') return;
-    const timer = setTimeout(() => setState('idle'), 2500);
-    return () => clearTimeout(timer);
-  }, [state]);
-  return [state, (url, title) => void shareLink(url, title).then(setState)];
+  const [state, run] = useOutcome();
+  return [state, (url, title) => run(shareLink(url, title))];
 }
 function shareLabel(state: ShareState, idle: string) {
   return state === 'copied' ? 'Link copied' : state === 'failed' ? 'Copy failed' : idle;

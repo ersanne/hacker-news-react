@@ -40,11 +40,15 @@ fixtureItems[999] = null;
 // the counts the feed tests assert.
 fixtureItems[66] = {
   id: 66, type: 'story', title: 'A story whose comments use every convention', url: 'https://example.com/story/66',
-  by: 'paulg', score: 10, time: Math.floor(Date.now() / 1000) - 600, descendants: 1, kids: [6600],
+  by: 'paulg', score: 10, time: Math.floor(Date.now() / 1000) - 600, descendants: 2, kids: [6600, 6601],
 };
 fixtureItems[6600] = {
   id: 6600, type: 'comment', by: 'conventions', time: Math.floor(Date.now() / 1000) - 300,
-  text: 'Worth comparing with <a href="https://news.ycombinator.com/item?id=1">the earlier thread</a> and <a href="https://example.com/elsewhere">this write-up</a>.',
+  text: 'Worth comparing with <a href="https://news.ycombinator.com/item?id=1">the earlier thread</a> and <a href="https://example.com/elsewhere">this write-up</a>.<p>Run `pnpm build` first, then:<pre><code>  one\n    two\n  three</code></pre><p>&gt; a quote\n&gt;&gt; nested deeper<p>- first item\n- second item<p>As shown [1]<p>[1] https://example.com/paper',
+};
+fixtureItems[6601] = {
+  id: 6601, type: 'comment', by: 'plainly', time: Math.floor(Date.now() / 1000) - 200,
+  text: '<p>A second thread, so stepping on from the first has somewhere to go.</p>',
 };
 
 export async function mockAPI(page: Page, options: { failItems?: Set<number>; delayItem?: number; releaseItem?: Promise<void>; failFeed?: boolean } = {}) {

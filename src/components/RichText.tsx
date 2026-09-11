@@ -2,7 +2,8 @@ import { createElement, memo, useMemo, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { parseComment, type RichNode } from '../richtext';
 import { safeUrl } from '../format';
-import { ExternalLink } from './ui';
+import { ExternalLink, Icon } from './ui';
+import { useCopy } from '../copy';
 
 const VOID_TAGS = new Set(['br']);
 const CARRIED = ['feed', 'q', 'article', 'panes'];
@@ -29,9 +30,30 @@ function CommentLink({ href, children }: { href: string; children: ReactNode }) 
   return <Link to={`/item?${params.toString()}`}>{children}</Link>;
 }
 
+function text(node: RichNode): string {
+  return typeof node === 'string' ? node : node.children.map(text).join('');
+}
+
+// A block wide enough to scroll cannot hold its own controls: they would slide
+// out of reach with the code. The wrapper holds them still instead.
+function CodeBlock({ node }: { node: RichNode }) {
+  const code = text(node);
+  const [state, copy] = useCopy();
+  return <div className="code-block">
+    <div className="code-tools">
+      <button type="button" aria-label="Copy code" title="Copy code" data-state={state} onClick={() => copy(code)}>
+        <Icon name="copy" size={13} /><span role="status">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}</span>
+      </button>
+    </div>
+    {/* A region that scrolls has to be reachable by the keyboard too. */}
+    <pre tabIndex={0} role="region" aria-label="Code block">{typeof node === 'string' ? node : node.children.map(render)}</pre>
+  </div>;
+}
+
 function render(node: RichNode, key: number): ReactNode {
   if (typeof node === 'string') return node;
   const children = node.children.map(render);
+  if (node.tag === 'pre') return <CodeBlock key={key} node={node} />;
   if (node.tag === 'a') {
     // Links are the one place a pass sets an attribute, so the href is checked
     // again here rather than trusted from the tree.
