@@ -46,10 +46,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # public/CNAME points the site at hn.eriksanne.com, which serves it at the
+      # domain root, so BASE_PATH stays unset.
       - run: pnpm run build
-        env:
-          # A project site is served under /<repository>/.
-          BASE_PATH: /${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist

@@ -1,39 +1,54 @@
+<div align="center">
+
 # HN Reader
 
-A quieter way to read Hacker News. A small, read-only React application with a desktop split view and a focused mobile reading screen.
+**A quieter corner of Hacker News.**
 
-## Run locally
+Read-only, keyboard-first, no account and no backend.
 
-Use **Node.js 22.12 or newer**. The exact version, and the pnpm version, are pinned in `mise.toml` (the Node major is also in `.nvmrc` for nvm users).
+[![Pages](https://github.com/ersanne/hacker-news-react/actions/workflows/pages.yml/badge.svg)](https://github.com/ersanne/hacker-news-react/actions/workflows/pages.yml)
+![React 19](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-7-646cff?logo=vite&logoColor=white)
+
+[**Open the app →**](https://hn.eriksanne.com)
+
+<img src="docs/screenshot.png" alt="HN Reader: the Top feed beside an open discussion" width="880">
+
+</div>
+
+---
+
+## Features
+
+|  |  |
+|---|---|
+| 📚 **Five feeds** | Top, New, Best, Ask and Show, 30 stories per batch, refreshed only when you ask |
+| 🔍 **Full-text search** | The whole HN archive through Algolia, 30 per page, shareable as `/?q=…` |
+| 💬 **Discussions in place** | Beside the feed on desktop, its own screen below 1,024px, threads collapsible |
+| 📖 **Article pane** | Reader text or the page itself in a sandboxed frame, three columns from 1,400px |
+| 🔖 **Saved & read state** | A saved tab, read indicators, and a “Hide read” filter per feed |
+| ⌨️ **Keyboard-first** | `j` `k` to move, `Enter` to open, `r` for the article, `?` for the rest |
+| 🌗 **Themes** | System, light and dark, with DM Sans and Newsreader served locally |
+| 🔗 **Real URLs** | Every view is linkable, Back and Forward behave, paywalls get an archive.is link |
+
+Original articles, profiles and reply links open on their own sites. Accounts, voting and posting are deliberately out of scope.
+
+## Quick start
+
+Node 22.12 or newer. Versions are pinned in `mise.toml`, and the Node major in `.nvmrc` for nvm.
 
 ```sh
-mise install
+mise install     # optional, installs the pinned Node and pnpm
 pnpm install
 pnpm run dev
 ```
 
-With [mise](https://mise.jdx.dev) the scripts are also available as tasks: `mise run dev`, `build`, `test`, `test-e2e`, `typecheck`.
+Vite prints the local URL. No API keys, environment variables or server needed.
 
-Vite prints the local URL. No API keys, environment variables, or backend are required.
+With [mise](https://mise.jdx.dev) every script is also a task: `mise run dev`, `build`, `test`, `test-e2e`, `lint`, `typecheck`.
 
-## What it does
-
-- Top, New, Best, Ask, and Show feeds, with 30 stories per batch and explicit refresh.
-- Full-text search over the Hacker News archive, 30 results per page, shareable as `/?q=…`.
-- Discussions beside the feed on desktop; a separate discussion screen below 1,024px.
-- An article pane that reads the linked story in place: extracted reader text by default, or the page itself in a sandboxed frame. Three columns from 1,400px, an Article/Comments tab swap below that, and shareable as `&article=1`.
-- An archive.is link wherever a story URL appears, for articles behind a paywall.
-- Saved stories on their own tab, and a “Hide read” filter for each feed.
-- Read indicators, preserved feed scroll, and browser Back/Forward navigation.
-- Pointing at or focusing a story fetches the comments it opens with, so the click lands on a warm cache.
-- Comments in HN order, 20 per batch, with replies fetched on expansion and collapsible threads.
-- Keyboard shortcuts: `j` and `k` move through the list, `Enter` opens a discussion, `r` shows or hides the article pane, `o` opens the original article, `a` opens it on archive.is, `s` saves a story, `Escape` returns to the list, and `/` focuses search. `?` lists them all.
-- System, light, and dark themes; locally hosted DM Sans and Newsreader fonts.
-- Direct links such as `/item?id=8863&feed=top`, including compatibility with the old `/item?id=…` route.
-
-Original articles, author profiles, and participation links open on their respective sites. Accounts, voting, posting, and offline reading are intentionally outside this version.
-
-## Development and checks
+## Checks
 
 ```sh
 pnpm run typecheck
@@ -41,22 +56,50 @@ pnpm run lint
 pnpm test
 pnpm exec playwright install --with-deps chromium
 pnpm run test:e2e
-pnpm run build
-pnpm run preview
 ```
 
-Vitest covers the request cache, concurrency, ordering, failed requests, search-result mapping, and untrusted HTML. Playwright runs deterministic API fixtures on desktop Chromium and an emulated phone, covering reading, navigation, pagination, search, shortcuts, the article pane, saved stories, prefetching, themes, partial failures, and deep threads. Screenshots and traces for failed tests are saved under `test-results/`.
+Vitest covers the request cache, concurrency, ordering, failed requests, search-result mapping and untrusted HTML. Playwright drives deterministic API fixtures on desktop Chromium and an emulated phone: reading, navigation, pagination, search, shortcuts, the article pane, saved stories, prefetching, themes, partial failures and deep threads. Failures leave screenshots and traces in `test-results/`.
 
-## Structure and data
+<details>
+<summary><b>How it is put together</b></summary>
 
-`src/App.tsx` owns URL selection, theme, shortcuts, and the visited feed/discussion views. Components handle feed browsing, search results, and progressive comments; both story lists render through `src/components/StoryList.tsx`. `src/api.ts` centralizes requests to the [official Hacker News API](https://github.com/HackerNews/API) and to the [HN Algolia search API](https://hn.algolia.com/api), which supplies every field a result row shows, so results are not refetched story by story. Reader text comes from [r.jina.ai](https://jina.ai/reader/), which extracts an article as markdown; it is only called while the article pane is open, so the URL of a story reaches it only when the article is read there.
+### Structure
 
-The client keeps a five-minute response cache, deduplicates concurrent requests, limits requests to eight at once, and times out stalled requests after 15 seconds — 30 for article extraction, which renders a page before answering. Refresh clears the data cache and reloads the current feed; stories do not reorder automatically. Up to ten recent discussions remain mounted to retain expanded threads and reading position. Feeds remain available for the current session.
+`src/App.tsx` owns URL selection, theme, shortcuts and the visited feed and discussion views. Components handle feed browsing, search results and progressive comments; both story lists render through `src/components/StoryList.tsx`.
 
-Theme, article view, the “Hide read” setting, and the latest 2,000 opened and saved story IDs are saved in browser local storage. Storage failures do not prevent reading. There is no account sync, analytics, service worker, or server database. Story, comment, and extracted article HTML is sanitized with DOMPurify; unsafe article URLs are rejected. Embedded pages run in a sandboxed frame without `allow-same-origin`, and many sites decline to be framed at all.
+### Data
 
-## Hosting
+`src/api.ts` is the only place that talks to the network:
 
-`pnpm run build` produces `dist/`, including a `404.html` copy of `index.html`: GitHub Pages serves that file for unknown paths, which is what keeps direct discussion links working. `.github/workflows/pages.yml` runs the checks and publishes `dist/` to GitHub Pages from `main`; Pages must be set to the GitHub Actions source in the repository settings. A project site is served under `/<repository>/`, so the workflow passes that path to the build in `BASE_PATH`; the build defaults to the domain root otherwise. No deployment is performed by the build command itself.
+- the [official Hacker News API](https://github.com/HackerNews/API) for feeds, stories and comments
+- the [HN Algolia search API](https://hn.algolia.com/api), which returns every field a result row needs, so search results are never refetched story by story
+- [r.jina.ai](https://jina.ai/reader/) for reader text, called only while the article pane is open — a story URL reaches it only when you read the article there
 
-This rebuild replaces the original Vue 2/Vuetify prototype. The original implementation remains in Git history.
+The client caches responses for five minutes, deduplicates concurrent requests, allows eight at a time, and times out after 15 seconds — 30 for article extraction, which renders a page before answering. Pointing at or focusing a story fetches the comments it opens with, so the click lands on a warm cache. Refresh clears the cache and reloads the current feed; stories never reorder under the cursor. Up to ten recent discussions stay mounted to keep expanded threads and scroll position.
+
+### Storage and safety
+
+Theme, article view, the “Hide read” setting and the latest 2,000 opened and saved story IDs live in local storage; storage failures never block reading. There is no account sync, analytics, service worker or database. Story, comment and extracted article HTML is sanitized with DOMPurify, unsafe article URLs are rejected, and embedded pages run sandboxed without `allow-same-origin` — many sites decline to be framed at all.
+
+</details>
+
+<details>
+<summary><b>Hosting</b></summary>
+
+`pnpm run build` produces `dist/` with a `404.html` copy of `index.html`: GitHub Pages serves that for unknown paths, which is what keeps direct discussion links working.
+
+`.github/workflows/pages.yml` runs the checks and publishes `dist/` from `main`. `pnpm run build` deploys nothing by itself.
+
+The site is served at [hn.eriksanne.com](https://hn.eriksanne.com). Three things keep it there:
+
+- `public/CNAME` names the domain, and Vite copies it into every build — without it in the artifact, a deploy drops the custom domain.
+- DNS: a `CNAME` record for `hn` pointing at `ersanne.github.io.`
+- Repository settings: Pages source set to GitHub Actions, the custom domain entered, and “Enforce HTTPS” enabled once the certificate is issued.
+
+A custom domain serves the build at the domain root, so `BASE_PATH` stays unset. Building with `BASE_PATH=/hacker-news-react/` instead produces a build for the `ersanne.github.io/hacker-news-react/` project path.
+
+</details>
+
+---
+
+This rebuild replaces an earlier Vue 2 / Vuetify prototype, which remains in Git history.
