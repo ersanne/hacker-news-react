@@ -48,7 +48,7 @@ fixtureItems[6600] = {
 };
 fixtureItems[6601] = {
   id: 6601, type: 'comment', by: 'plainly', time: Math.floor(Date.now() / 1000) - 200,
-  text: '<p>A second thread, so stepping on from the first has somewhere to go.</p>',
+  text: `<p>A second thread, so stepping on from the first has somewhere to go.</p><pre><code>${Array.from({ length: 22 }, (_, i) => `line ${i + 1}`).join('\n')}</code></pre>`,
 };
 
 export async function mockAPI(page: Page, options: { failItems?: Set<number>; delayItem?: number; releaseItem?: Promise<void>; failFeed?: boolean } = {}) {

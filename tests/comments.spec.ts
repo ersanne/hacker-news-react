@@ -21,7 +21,7 @@ test('the conventions a comment types come through as the markup they meant', as
   await mockAPI(page);
   await mockComments(page);
   await page.goto('/item?id=66');
-  const comment = page.locator('.discussion-panel:not([hidden]) .comment .prose');
+  const comment = page.locator('.discussion-panel:not([hidden]) .comment .prose').first();
 
   await expect(comment.locator('code').first()).toHaveText('pnpm build');
   await expect(comment.locator('blockquote blockquote p')).toHaveText('nested deeper');
@@ -39,11 +39,32 @@ test('a code block can be copied, and the thread keys still work from its button
   await page.goto('/item?id=66');
   const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
 
-  await discussion.getByRole('button', { name: 'Copy code' }).click();
+  await discussion.getByRole('button', { name: 'Copy code' }).first().click();
   await expect(discussion.getByText('Copied')).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('one\n  two\nthree');
 
   // Focus inside a comment body still belongs to the comment it sits in.
   await page.keyboard.press('n');
   await expect.poll(() => page.evaluate(() => document.activeElement?.className)).toContain('comment');
+});
+
+test('a long code block folds, and wrapping is a preference every block follows', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=66');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  const blocks = discussion.locator('.code-block');
+
+  // The short block is shown whole; only the long one is folded.
+  await expect(blocks).toHaveCount(2);
+  await expect(blocks.first()).toHaveAttribute('data-folded', 'off');
+  await expect(blocks.last()).toHaveAttribute('data-folded', 'on');
+  await discussion.getByRole('button', { name: 'Show all 22 lines' }).click();
+  await expect(blocks.last()).toHaveAttribute('data-folded', 'off');
+
+  await discussion.getByRole('button', { name: 'Wrap long lines' }).first().click();
+  await expect(blocks.first()).toHaveAttribute('data-wrap', 'on');
+  await expect(blocks.last()).toHaveAttribute('data-wrap', 'on');
+  await page.reload();
+  await expect(blocks.first()).toHaveAttribute('data-wrap', 'on');
 });

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ago, archiveUrl, domain, faviconUrl, hnUrl } from '../format';
 import { copyText, useOutcome, type CopyState } from '../copy';
 
-export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus' | 'share' | 'copy'; size?: number }) {
+export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus' | 'share' | 'copy' | 'wrap'; size?: number }) {
   const paths = {
     arrow: <><path d="M7 17 17 7M7 7h10v10" /></>,
     back: <><path d="m12 5-7 7 7 7M5 12h14" /></>,
@@ -16,6 +16,7 @@ export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' |
     star: <path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8Z" />,
     reader: <><path d="M4 5h16v14H4z" /><path d="M7 9h10M7 12.5h10M7 16h6" /></>,
     embed: <><path d="M3 5h18v14H3z" /><path d="M3 9h18" /><path d="M6 7h.01M9 7h.01" /></>,
+    wrap: <><path d="M4 6h16M4 12h11a3 3 0 0 1 0 6h-3" /><path d="m14 15-2 3 2 3" /><path d="M4 18h3" /></>,
     copy: <><path d="M9 9h10v10H9z" /><path d="M15 9V5H5v10h4" /></>,
     share: <><path d="M12 15V4m0 0L8.5 7.5M12 4l3.5 3.5" /><path d="M5 13v6h14v-6" /></>,
     sliders: <><path d="M4 7h10m4 0h2M4 17h4m4 0h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,

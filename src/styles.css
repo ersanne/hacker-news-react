@@ -183,6 +183,12 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .code-tools button { display: inline-flex; align-items: center; gap: 5px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 4px 7px; font-size: 10px; color: var(--subtle); }
 .code-tools button:hover { color: var(--accent); }
 .code-tools button[data-state="copied"] { color: var(--accent); }
+.code-tools button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.code-block[data-wrap="on"] pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.code-block[data-folded="on"] pre { max-height: 27em; overflow-y: hidden; }
+/* The fold is a clamp on what is shown, so the text underneath stays whole. */
+.code-block[data-folded="on"]::after { content: ''; position: absolute; left: 0; right: 0; bottom: 26px; height: 56px; pointer-events: none; background: linear-gradient(transparent, var(--hover)); }
+.code-fold { margin-top: 6px; }
 .prose code { font-size: .9em; background: var(--hover); padding: 1px 3px; border-radius: 2px; }
 .prose pre code { padding: 0; }
 .prose ul, .prose ol { margin: 0 0 13px; padding-left: 22px; }

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 
 export function readStorage(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -36,4 +36,22 @@ export function useReadStories() {
 export function useSavedStories() {
   const { ids, toggle } = useIdSet('hn-saved');
   return { saved: ids, toggleSaved: toggle };
+}
+
+export type Flag = { get: () => boolean; set: (on: boolean) => void; subscribe: (listen: () => void) => () => void };
+
+// A preference every instance of a control shares, so turning one on turns
+// them all on rather than leaving the page half in each state.
+export function flag(key: string, fallback: boolean): Flag {
+  const listeners = new Set<() => void>();
+  const stored = readStorage(key);
+  let on = stored === null ? fallback : stored === '1';
+  return {
+    get: () => on,
+    set: next => { on = next; writeStorage(key, next ? '1' : '0'); for (const listen of listeners) listen(); },
+    subscribe: listen => { listeners.add(listen); return () => listeners.delete(listen); },
+  };
+}
+export function useFlag(store: Flag) {
+  return useSyncExternalStore(store.subscribe, store.get);
 }

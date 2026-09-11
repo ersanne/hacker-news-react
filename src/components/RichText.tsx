@@ -1,9 +1,10 @@
-import { createElement, memo, useMemo, type ReactNode } from 'react';
+import { createElement, memo, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { parseComment, type RichNode } from '../richtext';
 import { safeUrl } from '../format';
 import { ExternalLink, Icon } from './ui';
 import { useCopy } from '../copy';
+import { flag, useFlag } from '../storage';
 
 const VOID_TAGS = new Set(['br']);
 const CARRIED = ['feed', 'q', 'article', 'panes'];
@@ -34,19 +35,37 @@ function text(node: RichNode): string {
   return typeof node === 'string' ? node : node.children.map(text).join('');
 }
 
+// Wrapping is a preference rather than a property of one block, so every block
+// on the page follows it and it outlives the comment that prompted it.
+const codeWrap = flag('hn-code-wrap', false);
+// Enough code to read the shape of it; past that a block sets the length of
+// the comment it sits in.
+const FOLD_LINES = 15;
+
 // A block wide enough to scroll cannot hold its own controls: they would slide
 // out of reach with the code. The wrapper holds them still instead.
 function CodeBlock({ node }: { node: RichNode }) {
   const code = text(node);
   const [state, copy] = useCopy();
-  return <div className="code-block">
+  const wrap = useFlag(codeWrap);
+  const [open, setOpen] = useState(false);
+  const lines = code.split('\n').length;
+  const folded = lines > FOLD_LINES && !open;
+  return <div className="code-block" data-wrap={wrap ? 'on' : 'off'} data-folded={folded ? 'on' : 'off'}>
     <div className="code-tools">
+      <button type="button" aria-label="Wrap long lines" title="Wrap long lines" aria-pressed={wrap} onClick={() => codeWrap.set(!wrap)}>
+        <Icon name="wrap" size={13} />
+      </button>
       <button type="button" aria-label="Copy code" title="Copy code" data-state={state} onClick={() => copy(code)}>
         <Icon name="copy" size={13} /><span role="status">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}</span>
       </button>
     </div>
-    {/* A region that scrolls has to be reachable by the keyboard too. */}
+    {/* A region that scrolls has to be reachable by the keyboard too. The fold
+        is a visual clamp, so the text stays whole for anything reading it. */}
     <pre tabIndex={0} role="region" aria-label="Code block">{typeof node === 'string' ? node : node.children.map(render)}</pre>
+    {lines > FOLD_LINES && <button type="button" className="text-button code-fold" aria-expanded={open} onClick={() => setOpen(!open)}>
+      {open ? 'Show less' : `Show all ${lines} lines`}
+    </button>}
   </div>;
 }
 
