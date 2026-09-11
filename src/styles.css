@@ -147,6 +147,9 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .sort-control select { background: transparent; border: 1px solid var(--line); border-radius: 5px; color: var(--text); padding: 5px 7px; font-size: 11px; cursor: pointer; }
 .sort-control option { background: var(--surface); }
 .comment { padding: var(--comment-pad, 18px 0 17px); border-bottom: 1px solid var(--line); }
+/* A comment spans the column, so the ring sits inside its padding instead of
+   straddling the neighbours above and below. */
+.comment:focus-visible { outline-offset: -3px; border-radius: 6px; }
 /* The whole header collapses the comment; the overlay sits under the author
    link so the one thing inside it that leads elsewhere still does. */
 .comment-header { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 11px; margin-bottom: 9px; }

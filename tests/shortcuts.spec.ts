@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { mockAPI, mockReader, mockSearch } from './fixtures';
+import { test, expect, type Page } from '@playwright/test';
+import { mockAPI, mockComments, mockReader, mockSearch } from './fixtures';
 
 test('the shortcut overlay opens on ? and closes without leaving the story', async ({ page }) => {
   await mockAPI(page);
@@ -61,21 +61,87 @@ test('a opens the archive snapshot of the focused story in a new tab', async ({ 
 });
 
 test('pointing at a story warms its comments before it is opened', async ({ page }) => {
-  const requests = await mockAPI(page);
+  await mockAPI(page);
+  const threads = await mockComments(page);
   await page.goto('/?feed=top');
   const rows = page.locator('.feed-panel:not([hidden]) .story-row');
   await expect(rows.first()).toBeVisible();
-  expect(requests).not.toContain(100);
+  expect(threads).toHaveLength(0);
 
   await rows.first().hover();
-  // The discussion opens with twenty comments, so that is what a warm row holds.
-  await expect.poll(() => requests.filter(id => id >= 100 && id < 120)).toHaveLength(20);
+  await expect.poll(() => threads).toEqual([1]);
 
   // A row is warmed once; crossing it again costs nothing.
-  const settled = requests.length;
   await rows.first().hover();
   await page.waitForTimeout(300);
-  expect(requests).toHaveLength(settled);
+  expect(threads).toEqual([1]);
+});
+
+test('j and k carry on from the open story, not from the top of the list', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'A phone hides the list while a story is open');
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/?feed=top');
+  const rows = page.locator('.feed-panel:not([hidden]) .story-row');
+  await expect(rows.first()).toBeVisible();
+  await rows.nth(4).locator('h2 a').click();
+  await expect(page).toHaveURL('/item?id=5&feed=top');
+
+  // Focus sits on the discussion heading, so the list has nothing focused of its own.
+  await page.keyboard.press('j');
+  await expect(rows.nth(5).locator('h2 a')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL('/item?id=6&feed=top');
+  await page.keyboard.press('k');
+  await expect(rows.nth(4).locator('h2 a')).toBeFocused();
+});
+
+// The collapse control names its own comment, so its label says which comment holds focus.
+const focusedAuthor = (page: Page) => page.evaluate(() =>
+  document.activeElement?.querySelector('.collapse-target')?.getAttribute('aria-label')?.replace(/^\w+ comment by /, '') ?? '');
+
+test('n and p walk the comments while N and P skip whole threads', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  await expect(discussion.locator('.comments-list > .comment')).toHaveCount(20);
+
+  await page.keyboard.press('n');
+  expect(await focusedAuthor(page)).toBe('simonw');
+  await page.keyboard.press('n');
+  expect(await focusedAuthor(page)).toBe('reader101');
+  await page.keyboard.press('p');
+  expect(await focusedAuthor(page)).toBe('simonw');
+
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
+  await page.keyboard.press('n');
+  expect(await focusedAuthor(page)).toBe('ada');
+  await page.keyboard.press('N');
+  expect(await focusedAuthor(page)).toBe('reader101');
+  await page.keyboard.press('P');
+  expect(await focusedAuthor(page)).toBe('simonw');
+});
+
+test('x collapses the focused comment and n carries on past the first batch', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+  await expect(discussion.locator('.comments-list > .comment')).toHaveCount(20);
+
+  await page.keyboard.press('n');
+  await page.keyboard.press('x');
+  await expect(discussion.locator('.collapsed-note')).toHaveText('Comment collapsed · 1 direct reply');
+  await page.keyboard.press('x');
+  await expect(discussion.locator('.collapsed-note')).toHaveCount(0);
+
+  for (let i = 0; i < 19; i++) await page.keyboard.press('N');
+  await expect(discussion.locator('.comments-list > .comment')).toHaveCount(20);
+  await page.keyboard.press('n');
+  await expect(discussion.locator('.comments-list > .comment')).toHaveCount(25);
+  await expect.poll(() => focusedAuthor(page)).toBe('reader120');
 });
 
 test('focusing a search result fetches the story the results never carried', async ({ page }) => {

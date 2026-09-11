@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { mockAPI } from './fixtures';
+import { mockAPI, mockComments } from './fixtures';
 
 test('wide-screen gutters cannot scroll the page beyond the reader', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Wide-screen layout');
   await page.setViewportSize({ width: 1920, height: 1080 });
   await mockAPI(page);
+  await mockComments(page);
   await page.goto('/item?id=1');
   await expect(page.locator('.comments-list > .comment')).toHaveCount(20);
   await page.evaluate(() => document.fonts.ready);

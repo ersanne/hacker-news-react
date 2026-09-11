@@ -23,7 +23,7 @@ function CommentView({ comment, depth }: { comment: Comment; depth: number }) {
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const replies = comment.kids;
-  return <article className={`comment ${depth >= 3 ? 'flat-thread' : ''}`}>
+  return <article className={`comment ${depth >= 3 ? 'flat-thread' : ''}`} tabIndex={-1}>
     <div className="comment-header">
       <button className="collapse-target" aria-label={`${collapsed ? 'Expand' : 'Collapse'} comment by ${comment.by ?? 'unknown author'}`} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)} />
       <span className="collapse-mark" aria-hidden="true">{collapsed ? '+' : '−'}</span>

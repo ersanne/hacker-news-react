@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockAPI } from './fixtures';
+import { mockAPI, mockComments } from './fixtures';
 
 const firstTitle = 'The quiet craft of building software that lasts';
 
@@ -24,24 +24,26 @@ test('feed navigation, pagination, original links, and explicit refresh', async 
 
 test('discussion, progressive replies, collapse retention, and history', async ({ page }, testInfo) => {
   const requests = await mockAPI(page);
+  const threads = await mockComments(page);
   await page.goto('/');
   await page.getByRole('link', { name: firstTitle, exact: true }).click();
   const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
   await expect(discussion.getByRole('heading', { name: firstTitle })).toBeVisible();
   await expect(discussion.locator('.comments-list > .comment')).toHaveCount(20);
   expect(requests).not.toContain(1000);
+  expect(threads).toEqual([1]);
   await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).click();
   await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
   await discussion.getByRole('button', { name: 'Hide replies', exact: true }).click();
   await expect(page.getByText('A nested reply worth reading.')).toBeHidden();
   await discussion.getByRole('button', { name: 'Show 1 reply', exact: true }).first().click();
   await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
-  expect(requests.filter(id => id === 1000)).toHaveLength(1);
+  expect(threads).toEqual([1]);
   await discussion.getByRole('button', { name: 'Collapse comment by simonw', exact: true }).click();
   await expect(page.getByText('A nested reply worth reading.')).toBeHidden();
   await discussion.getByRole('button', { name: 'Expand comment by simonw', exact: true }).click();
   await expect(page.getByText('A nested reply worth reading.')).toBeVisible();
-  await discussion.getByRole('button', { name: 'Load more comments' }).click();
+  await discussion.getByRole('button', { name: 'Show more comments' }).click();
   await expect(discussion.locator('.comments-list > .comment')).toHaveCount(25);
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'The front page' })).toBeVisible();
@@ -88,22 +90,25 @@ test('direct links, theme persistence, empty discussion, and invalid items', asy
 });
 
 test('failed items and comments can retry without losing the screen', async ({ page }) => {
-  const failures = new Set([2, 100]);
+  const failures = new Set([2]);
+  const failedThreads = new Set([1]);
   await mockAPI(page, { failItems: failures });
+  await mockComments(page, { failThreads: failedThreads });
   await page.goto('/');
   await expect(page.getByText('This story couldn’t load.')).toBeVisible();
   failures.delete(2);
   await page.locator('.story-failure').getByRole('button', { name: 'Try again' }).click();
   await expect(page.locator('.story-row')).toHaveCount(30);
   await page.getByRole('link', { name: firstTitle, exact: true }).click();
-  await expect(page.getByText('This comment couldn’t load.')).toBeVisible();
-  failures.delete(100);
+  await expect(page.getByText('Couldn’t load the comments.', { exact: false })).toBeVisible();
+  failedThreads.delete(1);
   await page.getByRole('region', { name: 'Discussion', exact: true }).getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByText('The best tools are the ones', { exact: false })).toBeVisible();
 });
 
 test('deep threads preserve deleted parents and do not overflow', async ({ page }) => {
   await mockAPI(page);
+  await mockComments(page);
   await page.goto('/item?id=1');
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Show 1 reply', exact: true }).click();
   await expect(page.getByText('A surviving reply below a deleted comment.')).toBeVisible();

@@ -53,6 +53,29 @@ export async function mockAPI(page: Page, options: { failItems?: Set<number>; de
   return requests;
 }
 
+// The whole thread arrives from Algolia in one response, and a deleted comment
+// keeps its place in the tree with no author or text.
+type AlgoliaNode = { id: number; author: string | null; text: string | null; created_at_i: number | null; children: AlgoliaNode[] };
+function thread(id: number): AlgoliaNode {
+  const item = fixtureItems[id];
+  const removed = !item || item.deleted;
+  return {
+    id, author: removed ? null : item.by ?? null, text: removed ? null : item.text ?? null,
+    created_at_i: item?.time ?? null, children: (item?.kids ?? []).map(thread),
+  };
+}
+
+export async function mockComments(page: Page, options: { failThreads?: Set<number> } = {}) {
+  const threads: number[] = [];
+  await page.route('https://hn.algolia.com/api/v1/items/*', route => {
+    const id = Number(new URL(route.request().url()).pathname.split('/').pop());
+    threads.push(id);
+    if (options.failThreads?.has(id)) return route.fulfill({ status: 503, body: 'Unavailable' });
+    return route.fulfill({ json: thread(id) });
+  });
+  return threads;
+}
+
 export async function mockSearch(page: Page, options: { fail?: boolean } = {}) {
   const queries: { query: string; page: number }[] = [];
   await page.route('https://hn.algolia.com/api/v1/search*', async route => {

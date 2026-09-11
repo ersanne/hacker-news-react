@@ -8,10 +8,25 @@ function rowLinks() {
   return [...document.querySelectorAll<HTMLAnchorElement>('.feed-panel:not([hidden]) [data-story-id] h2 a')]
     .filter(link => link.offsetParent !== null);
 }
+// The open story stands in for a focused row, so leaving the list and coming
+// back — or reading the discussion — resumes where the reader is rather than
+// at the top.
 function focusedRow(links: HTMLAnchorElement[], selected: number | null) {
-  const index = links.indexOf(document.activeElement?.closest('[data-story-id]')?.querySelector('h2 a') as HTMLAnchorElement);
-  const row = links[index]?.closest('[data-story-id]') ?? (selected ? document.querySelector(`.feed-panel:not([hidden]) [data-story-id="${selected}"]`) : null);
-  return { index, row };
+  const row = document.activeElement?.closest<HTMLElement>('[data-story-id]')
+    ?? (selected ? document.querySelector<HTMLElement>(`.feed-panel:not([hidden]) [data-story-id="${selected}"]`) : null);
+  return { index: links.indexOf(row?.querySelector('h2 a') as HTMLAnchorElement), row };
+}
+
+// Replies below the batch limit are not rendered and a collapsed comment sits
+// in a hidden block, so what is laid out is exactly what can be stepped through.
+function commentNodes(selector: string) {
+  return [...document.querySelectorAll<HTMLElement>(`.discussion-panel:not([hidden]) ${selector}`)]
+    .filter(comment => comment.offsetParent !== null);
+}
+function focusComment(comment: HTMLElement | undefined) {
+  if (!comment) return;
+  comment.focus({ preventScroll: true });
+  comment.scrollIntoView({ block: 'nearest' });
 }
 
 // Shortcuts read the rendered list because only one feed panel is visible at a
@@ -66,6 +81,37 @@ export function useKeyboardShortcuts({ selected, backTo, search, dialogOpen, pan
         else onFocusMode();
         return;
       }
+      const comment = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.comment') ?? null;
+      if (event.key === 'x' || event.key === 'Enter') {
+        // Enter stays with whatever holds it — a story link, a button — unless
+        // that is the comment body itself.
+        if (!comment || (event.key === 'Enter' && document.activeElement !== comment)) return;
+        event.preventDefault();
+        comment.querySelector<HTMLButtonElement>(event.key === 'x' ? ':scope > .comment-header > .collapse-target' : ':scope > div > .reply-toggle')?.click();
+        return;
+      }
+      if (['n', 'p', 'N', 'P'].includes(event.key)) {
+        const top = event.key === 'N' || event.key === 'P';
+        const step = event.key === 'n' || event.key === 'N' ? 1 : -1;
+        const selector = top ? '.comments-list > .comment' : '.comment';
+        const comments = commentNodes(selector);
+        if (!comments.length) return;
+        event.preventDefault();
+        // From a reply, the thread keys move on from the thread it belongs to.
+        const from = top ? comment?.closest<HTMLElement>('.comments-list > .comment') ?? null : comment;
+        const index = from ? comments.indexOf(from) : -1;
+        if (index < 0) return focusComment(comments[0]);
+        if (index === comments.length - 1 && step > 0) {
+          const more = commentNodes('.more-comments')
+            .find(button => from!.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING);
+          if (!more) return;
+          more.click();
+          // React commits in a microtask, so the new batch is laid out by the frame.
+          requestAnimationFrame(() => focusComment(commentNodes(selector)[index + 1]));
+          return;
+        }
+        return focusComment(comments[Math.max(0, index + step)]);
+      }
       if (!['j', 'k', 'o', 'a', 's'].includes(event.key)) return;
       const links = rowLinks();
       if (!links.length && !selected) return;
@@ -78,7 +124,7 @@ export function useKeyboardShortcuts({ selected, backTo, search, dialogOpen, pan
         return;
       }
       if (event.key === 's') {
-        const id = Number((row as HTMLElement | null)?.dataset.storyId ?? selected);
+        const id = Number(row?.dataset.storyId ?? selected);
         if (!id) return;
         event.preventDefault();
         onToggleSaved(id);

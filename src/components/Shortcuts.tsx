@@ -7,6 +7,10 @@ const keys: [string, string][] = [
   ['c', 'Show or hide the comments pane'],
   ['f', 'Show or hide the story list'],
   ['z', 'Focus mode — the article on its own'],
+  ['n / p', 'Move down and up the comments'],
+  ['N / P', 'Jump to the next and previous thread'],
+  ['x', 'Collapse or expand the focused comment'],
+  ['Enter', 'Show or hide the replies to the focused comment'],
   ['o', 'Open the original article in a new tab'],
   ['a', 'Open the article on archive.is'],
   ['s', 'Save or unsave the story'],
@@ -28,7 +32,7 @@ export default function Shortcuts({ open, onClose }: { open: boolean; onClose: (
   return <dialog className="sheet shortcuts" ref={dialog} aria-labelledby="shortcuts-title" onClose={onClose} onClick={event => { if (event.target === dialog.current) onClose(); }}>
     <div className="sheet-inner">
       <h2 id="shortcuts-title">Keyboard shortcuts</h2>
-      <dl>{keys.map(([key, description]) => <div key={key}><dt><kbd>{key}</kbd></dt><dd>{description}</dd></div>)}</dl>
+      <dl>{keys.map(([key, description]) => <div key={description}><dt><kbd>{key}</kbd></dt><dd>{description}</dd></div>)}</dl>
       <button type="button" className="secondary-button" onClick={onClose}>Close <kbd>Esc</kbd></button>
     </div>
   </dialog>;
