@@ -52,7 +52,13 @@ async function request<T>(url: string, init?: RequestInit, timeout = 15000): Pro
 }
 
 export function getItem(id: number) { return request<HNItem | null>(`${HN_API}/item/${id}.json`); }
-export function getFeed(feed: Feed) { return request<number[]>(`${HN_API}/${feed}stories.json`); }
+// A fresh read drops only this feed's entry, so polling for new ids leaves the
+// cached stories and the prefetch set intact.
+export function getFeed(feed: Feed, fresh = false) {
+  const url = `${HN_API}/${feed}stories.json`;
+  if (fresh) cache.delete(url);
+  return request<number[]>(url);
+}
 export function clearCache() { cache.clear(); prefetched.clear(); }
 
 const prefetched = new Set<number>();

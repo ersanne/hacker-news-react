@@ -50,7 +50,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .skip-link { position: fixed; top: -60px; left: 16px; z-index: 10; background: var(--surface); padding: 12px; }
 .skip-link:focus { top: 8px; }
-.app-shell { max-width: 1760px; height: 100dvh; min-height: 420px; margin: 0 auto; display: flex; flex-direction: column; background: var(--surface); border-inline: 1px solid var(--line); }
+.app-shell { max-width: var(--shell-max, 1760px); height: 100dvh; min-height: 420px; margin: 0 auto; display: flex; flex-direction: column; background: var(--surface); border-inline: 1px solid var(--line); }
 .app-header { display: flex; align-items: center; gap: 22px; padding: 0 28px; min-height: 62px; border-bottom: 1px solid var(--line); }
 .brand { display: flex; gap: 10px; align-items: center; font-size: 22px; font-weight: 700; letter-spacing: -1.1px; color: var(--text); }
 .brand-mark { width: 29px; height: 31px; border-radius: 8px; display: grid; place-items: center; background: #bd512e; color: #fffaf2; font-family: Georgia, serif; font-size: 21px; font-weight: 400; }
@@ -69,8 +69,8 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .nav-suffix { font-size: 10px; opacity: .75; }
 .nav-note { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--muted); }
 .reader { display: grid; grid-template-columns: minmax(340px, 34%) minmax(0, 1fr); flex: 1; min-height: 0; outline: none; }
-.feed-column { min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
-.discussion-column { min-width: 0; min-height: 0; background: var(--paper); position: relative; }
+.feed-column { grid-row: 1; min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
+.discussion-column { grid-row: 1; min-width: 0; min-height: 0; background: var(--paper); position: relative; }
 .feed-panel { height: 100%; display: flex; flex-direction: column; }
 .feed-heading { padding: 18px 22px 15px 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .eyebrow { font-size: 9px; letter-spacing: 1.9px; font-weight: 600; color: var(--muted); }
@@ -82,7 +82,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .list-caption span:last-child { letter-spacing: 0; font-size: 10px; color: var(--subtle); }
 .feed-scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .story-list { list-style: none; padding: 0; margin: 0; }
-.story-row { position: relative; display: flex; gap: 12px; padding: 13px 22px 13px 18px; border-bottom: 1px solid var(--line); transition: background .15s; }
+.story-row { position: relative; display: flex; gap: 12px; padding: var(--row-pad-y, 13px) 22px var(--row-pad-y, 13px) 18px; border-bottom: 1px solid var(--line); transition: background .15s; }
 .story-row:hover { background: var(--hover); }
 .story-row.selected { background: var(--selected); }
 .story-row.selected::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: var(--accent); }
@@ -92,7 +92,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .story-domain { color: var(--muted); font-size: 10px; display: flex; align-items: center; gap: 8px; margin-bottom: 3px; min-height: 14px; }
 .story-domain a { display: inline-flex; align-items: center; gap: 4px; overflow-wrap: anywhere; }
 .read-label { margin-left: auto; font-size: 9px; color: var(--subtle); }
-.story-row h2 { font-size: 15px; font-weight: 550; line-height: 1.4; margin: 0 0 5px; letter-spacing: -.1px; overflow-wrap: anywhere; }
+.story-row h2 { font-size: var(--row-title, 15px); font-weight: 550; line-height: 1.4; margin: 0 0 5px; letter-spacing: -.1px; overflow-wrap: anywhere; }
 .story-row h2 a { display: block; }
 .story-row.is-read:not(.selected) h2 { color: var(--muted); }
 .story-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; font-size: 10px; color: var(--muted); line-height: 1.6; }
@@ -118,7 +118,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .discussion-toolbar { min-height: 46px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; font-size: 10px; color: var(--muted); }
 .discussion-toolbar a { display: inline-flex; gap: 7px; align-items: center; padding-block: 12px; }
 .discussion-scroll { position: relative; overflow-y: auto; flex: 1; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.discussion-inner { max-width: 840px; margin: 0 auto; padding: 30px 44px 20px; }
+.discussion-inner { max-width: 840px; margin: 0 auto; padding: var(--pane-pad, 30px 44px) 20px; }
 .article-heading h2 { font-family: var(--serif); font-size: clamp(28px, 2.4vw, 36px); font-weight: 450; line-height: 1.16; letter-spacing: -.5px; margin: 11px 0 15px; overflow-wrap: anywhere; }
 .article-heading h2:focus { outline: none; }
 .article-meta { display: flex; flex-wrap: wrap; gap: 9px 15px; font-size: 11px; color: var(--muted); }
@@ -129,14 +129,14 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .discussion-label h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 12px; font-weight: 550; }
 .discussion-label h3 > span { font-size: 10px; font-weight: 400; background: var(--line); padding: 2px 6px; border-radius: 4px; }
 .discussion-label > span { font-size: 9px; color: var(--muted); }
-.comment { padding: 18px 0 17px; border-bottom: 1px solid var(--line); }
+.comment { padding: var(--comment-pad, 18px 0 17px); border-bottom: 1px solid var(--line); }
 .comment-header { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 10px; margin-bottom: 9px; }
 .avatar { width: 23px; height: 23px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 10px; font-weight: 600; border-radius: 6px; flex-shrink: 0; }
 .comment-author { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
 .comment-header time { color: var(--muted); margin-left: 3px; white-space: nowrap; font-size: 9px; }
 .collapse-button { background: transparent; border: 0; font-size: 17px; color: var(--muted); margin-left: auto; width: 28px; height: 28px; flex-shrink: 0; }
 .collapse-button:hover { color: var(--accent); background: var(--hover); }
-.prose { font-size: 14px; line-height: 1.85; overflow-wrap: anywhere; }
+.prose { font-size: 14px; line-height: var(--prose-line, 1.85); overflow-wrap: anywhere; }
 .prose p { margin: 0 0 13px; }
 .prose p:last-child { margin-bottom: 0; }
 .prose a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
@@ -186,18 +186,18 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .article-source { display: flex; align-items: center; gap: 9px; letter-spacing: 1.2px; text-transform: uppercase; }
 .article-source .favicon { width: 20px; height: 20px; }
 
-.article-column { min-width: 0; min-height: 0; display: none; background: var(--paper); border-right: 1px solid var(--line); }
+.article-column { grid-row: 1; min-width: 0; min-height: 0; display: none; background: var(--paper); }
 .reader.has-article .article-column { display: block; }
 .article-panel { height: 100%; display: flex; flex-direction: column; }
 .article-toolbar { min-height: 46px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; padding: 0 24px; font-size: 10px; color: var(--muted); }
 .article-actions { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 .article-actions a { display: inline-flex; gap: 5px; align-items: center; padding-block: 12px; }
 .article-scroll { position: relative; overflow-y: auto; flex: 1; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.article-inner { max-width: 720px; margin: 0 auto; padding: 30px 44px 40px; }
+.article-inner { max-width: 720px; margin: 0 auto; padding: var(--pane-pad, 30px 44px) 40px; }
 .article-stats { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; font-size: 10px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--subtle); }
 .article-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 18px; font-size: 11px; }
 .article-links > a:not(.article-link) { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); }
-.article-body { font-family: var(--serif); font-size: 17px; line-height: 1.75; margin-top: 26px; overflow-wrap: anywhere; }
+.article-body { font-family: var(--serif); font-size: 17px; line-height: var(--article-line, 1.75); margin-top: 26px; overflow-wrap: anywhere; }
 .article-body h1, .article-body h2, .article-body h3, .article-body h4 { font-weight: 550; line-height: 1.3; margin: 32px 0 12px; }
 .article-body h1 { font-size: 25px; } .article-body h2 { font-size: 21px; } .article-body h3 { font-size: 18px; } .article-body h4 { font-size: 16px; }
 .article-body p, .article-body ul, .article-body ol, .article-body blockquote { margin: 0 0 18px; }
@@ -231,21 +231,78 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .save-button.with-label { padding: 6px 8px; }
 .hide-read { display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0; font-size: 10px; color: var(--subtle); cursor: pointer; }
 .hide-read input { accent-color: var(--accent); margin: 0; }
-.shortcuts { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 0; max-width: 420px; width: calc(100% - 32px); }
-.shortcuts::backdrop { background: #00000055; }
-.shortcuts-inner { padding: 26px 28px 22px; }
-.shortcuts h2 { font-family: var(--serif); font-weight: 450; font-size: 22px; margin: 0 0 18px; }
+.sheet { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 0; max-width: 420px; width: calc(100% - 32px); }
+.sheet::backdrop { background: #00000055; }
+.sheet-inner { padding: 26px 28px 22px; }
+.sheet h2 { font-family: var(--serif); font-weight: 450; font-size: 22px; margin: 0 0 18px; }
+.view-settings { max-width: 520px; }
 .shortcuts dl { margin: 0 0 22px; display: grid; gap: 9px; }
 .shortcuts dl > div { display: flex; align-items: baseline; gap: 14px; }
 .shortcuts dt { min-width: 66px; }
 .shortcuts dd { margin: 0; font-size: 12px; color: var(--muted); }
 kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; background: var(--hover); }
 
-@media (min-width: 1400px) { .reader.has-article { grid-template-columns: minmax(280px, 23%) minmax(0, 1fr) minmax(0, 1fr); } }
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.setting-label { display: block; font-size: 12px; font-weight: 550; }
+.setting-hint { display: block; font-size: 10px; color: var(--muted); line-height: 1.6; margin-top: 3px; max-width: 30ch; }
+.setting select { background: transparent; border: 1px solid var(--line); border-radius: 5px; color: var(--text); padding: 7px 9px; font-size: 11px; cursor: pointer; }
+.setting option { background: var(--surface); }
+.setting .mode-switch { flex-shrink: 0; }
+.sheet-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 20px; }
+
+.app-shell[data-width='wide'] { --shell-max: 2200px; }
+/* The side borders read as stray hairlines once the shell meets the viewport. */
+.app-shell[data-width='full'] { --shell-max: none; border-inline: 0; }
+.app-shell[data-density='compact'] {
+  --row-pad-y: 8px;
+  --row-title: 14px;
+  --comment-pad: 11px 0 10px;
+  --prose-line: 1.6;
+  --pane-pad: 20px 30px;
+  --article-line: 1.6;
+}
+.app-shell[data-density='compact'] .feed-heading { padding-block: 13px 11px; }
+.app-shell[data-density='compact'] .story-domain { margin-bottom: 1px; }
+.app-shell[data-density='compact'] .story-row h2 { margin-bottom: 3px; }
+
+.new-stories { position: sticky; top: 0; z-index: 2; width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 14px; border: 0; border-bottom: 1px solid var(--line); background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 550; }
+.new-stories:hover { background: var(--accent); color: var(--surface); }
+
+.reader.hide-feed .feed-column { display: none; }
+.reader.hide-comments .discussion-column { display: none; }
+/* A single remaining pane should fill the reader, not inherit the list's width. */
+.reader.hide-feed { grid-template-columns: minmax(0, 1fr); }
+.pane-focus { width: 28px; height: 28px; }
+.pane-focus[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
+
+@media (min-width: 1400px) {
+  .reader.has-article { grid-template-columns: minmax(280px, 23%) minmax(0, 1fr) minmax(0, 1fr); }
+  /* Placement is explicit in both orders, so the three columns keep their source
+     order and tab order goes on following the layout. The divider belongs to
+     whichever reading pane comes first. */
+  .reader.has-article .discussion-column { grid-column: 2; border-right: 1px solid var(--line); }
+  .reader.has-article .article-column { grid-column: 3; }
+  .app-shell[data-order='article-first'] .reader.has-article .discussion-column { grid-column: 3; border-right: 0; }
+  .app-shell[data-order='article-first'] .reader.has-article .article-column { grid-column: 2; border-right: 1px solid var(--line); }
+
+  .reader.has-article.hide-feed { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .reader.has-article.hide-feed .discussion-column { grid-column: 1; }
+  .reader.has-article.hide-feed .article-column { grid-column: 2; }
+  .app-shell[data-order='article-first'] .reader.has-article.hide-feed .article-column { grid-column: 1; }
+  .app-shell[data-order='article-first'] .reader.has-article.hide-feed .discussion-column { grid-column: 2; }
+
+  .reader.has-article.hide-comments { grid-template-columns: minmax(280px, 23%) minmax(0, 1fr); }
+  .reader.has-article.hide-comments .article-column { grid-column: 2; border-right: 0; }
+  .reader.has-article.hide-feed.hide-comments { grid-template-columns: minmax(0, 1fr); }
+  .reader.has-article.hide-feed.hide-comments .article-column { grid-column: 1; }
+}
 @media (max-width: 1399px) {
   .reader.has-article .discussion-column { display: none; }
   .pane-tabs { display: flex; }
   .article-actions .pane-hide, .discussion-actions .pane-show { display: none; }
+  /* One reading pane shows at a time here, so the comments are already away.
+     The story list is still beside it, so hiding that stays worth offering. */
+  .article-actions .pane-comments { display: none; }
 }
 
 @media (min-width: 1601px) { .app-shell { box-shadow: 0 0 80px #00000006; } }
@@ -284,6 +341,9 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   .story-domain a { min-height: 24px; }
   .comment-count { min-height: 28px; }
   .icon-button { width: 44px; height: 44px; }
+  .setting { flex-wrap: wrap; gap: 12px; }
+  /* A single pane fills the screen, so there is no arrangement to change. */
+  .discussion-actions .pane-feed, .article-actions .pane-focus { display: none; }
 }
 @media (max-width: 580px) {
   .app-header { min-height: 69px; padding-inline: 20px; }

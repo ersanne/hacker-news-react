@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getItems, type ItemResult } from '../api';
 import { Icon, Skeleton } from './ui';
+import { useViewSettings } from '../settings';
 import StoryList from './StoryList';
 
 export default function SavedPanel({ active, selected, saved, read, onRead, onToggleSaved, hrefSuffix }: {
   active: boolean; selected: number | null; saved: Set<number>; read: Set<number>;
   onRead: (id: number) => void; onToggleSaved: (id: number) => void; hrefSuffix: string;
 }) {
+  const settings = useViewSettings();
   const [items, setItems] = useState<ItemResult[]>([]);
   const [busy, setBusy] = useState(true);
   const scrolling = useRef<HTMLDivElement>(null);
@@ -29,9 +31,9 @@ export default function SavedPanel({ active, selected, saved, read, onRead, onTo
   }
 
   return <section className="feed-panel" hidden={!active} aria-label="Saved stories">
-    <div className="feed-heading">
+    {settings.heading && <div className="feed-heading">
       <div><span className="eyebrow">YOUR SHELF</span><h1>Saved for later</h1><p>Stories you starred, waiting for a quieter moment.</p></div>
-    </div>
+    </div>}
     <div className="list-caption"><span>SAVED</span><span>{ids.length} {ids.length === 1 ? 'story' : 'stories'}</span></div>
     <div className="feed-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>
       {busy && ids.length > 0 && !items.length && <Skeleton rows={4} />}

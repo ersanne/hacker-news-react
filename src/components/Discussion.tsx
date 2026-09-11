@@ -46,9 +46,9 @@ function Comment({ item, depth }: { item: HNItem | null; depth: number }) {
   </article>;
 }
 
-export default function Discussion({ id, backTo, active, articleTo, showArticle, saved, onToggleSaved }: {
+export default function Discussion({ id, backTo, active, articleTo, showArticle, saved, onToggleSaved, hideFeed, feedToggleTo }: {
   id: number; backTo: string; active: boolean; articleTo: string; showArticle: boolean;
-  saved: boolean; onToggleSaved: () => void;
+  saved: boolean; onToggleSaved: () => void; hideFeed: boolean; feedToggleTo: string;
 }) {
   const [item, setItem] = useState<HNItem | null>(null);
   const [busy, setBusy] = useState(true);
@@ -82,6 +82,7 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
       </div>
       <div className="discussion-actions">
         <SaveButton saved={saved} onToggle={onToggleSaved} title={plainTitle(item?.title)} className="with-label" />
+        <Link to={feedToggleTo} className="pane-hide pane-feed">{hideFeed ? 'Show list' : 'Hide list'}</Link>
         {!showArticle && <Link to={articleTo} className="pane-show"><Icon name="reader" size={13} />Show article</Link>}
         <ExternalLink href={hnUrl(id)}>View on HN <Icon name="arrow" size={13} /></ExternalLink>
       </div>

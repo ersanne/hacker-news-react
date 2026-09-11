@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { feeds, type Feed } from './api';
+import { clearCache, feeds, type Feed } from './api';
 import Article from './components/Article';
 import FeedPanel from './components/FeedPanel';
 import SavedPanel from './components/SavedPanel';
 import SearchPanel from './components/SearchPanel';
 import Shortcuts from './components/Shortcuts';
+import ViewSettings from './components/ViewSettings';
 import Discussion, { EmptyDiscussion } from './components/Discussion';
 import { Icon } from './components/ui';
 import { useKeyboardShortcuts } from './keyboard';
+import { SettingsProvider, useSettings } from './settings';
 import { readStorage, useReadStories, useSavedStories, writeStorage } from './storage';
 
 type Theme = 'system' | 'light' | 'dark';
@@ -26,6 +28,11 @@ export default function App() {
   const invalid = location.pathname !== '/' && (location.pathname !== '/item' || !selected);
   const showArticle = query.get('article') === '1';
   const suffix = showArticle ? '&article=1' : '';
+  const panes = new Set((query.get('panes') ?? '').split(',').filter(Boolean));
+  // A pane can only be dropped while a story is open, and never the last one
+  // left: hiding the comments is offered alongside the article, not instead of it.
+  const hideFeed = !!selected && panes.has('nofeed');
+  const hideComments = !!selected && showArticle && panes.has('nocomments');
   const backTo = search ? `/?q=${encodeURIComponent(search)}${suffix}` : `/?feed=${view}${suffix}`;
   const [visited, setVisited] = useState<Feed[]>(search || view === 'saved' ? [] : [view]);
   const [opened, setOpened] = useState<number[]>(selected ? [selected] : []);
@@ -33,6 +40,11 @@ export default function App() {
   const { saved, toggleSaved } = useSavedStories();
   const [hideRead, setHideRead] = useState(() => readStorage('hn-hide-read') === '1');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, updateSettings] = useSettings();
+  const [refreshAt, setRefreshAt] = useState(0);
+  const [checkAt, setCheckAt] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const previousSelection = useRef(selected);
   const searchInput = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<Theme>(() => {
@@ -48,14 +60,36 @@ export default function App() {
   }
   const articleTo = paneTo(true);
   const commentsTo = paneTo(false);
+  function panesTo(next: Set<string>, article = showArticle) {
+    const params = new URLSearchParams(location.search);
+    if (article) params.set('article', '1'); else params.delete('article');
+    if (next.size) params.set('panes', [...next].join(',')); else params.delete('panes');
+    return `${location.pathname}?${params.toString()}`;
+  }
+  function paneToggleTo(pane: 'nofeed' | 'nocomments') {
+    const next = new Set(panes);
+    if (next.has(pane)) next.delete(pane); else next.add(pane);
+    // Hiding the comments only means anything once there is an article to read.
+    return panesTo(next, showArticle || next.has('nocomments'));
+  }
+  const focusTo = hideFeed && hideComments ? panesTo(new Set()) : panesTo(new Set(['nofeed', 'nocomments']), true);
+  const showPanesTo = panesTo(new Set());
   const toggleArticle = useCallback(() => {
     const next = new URLSearchParams(location.search);
     if (showArticle) next.delete('article'); else next.set('article', '1');
     void navigate(`${location.pathname}?${next.toString()}`);
   }, [location.pathname, location.search, showArticle, navigate]);
   const openHelp = useCallback(() => setHelpOpen(true), []);
+  const togglePane = useCallback((pane: 'nofeed' | 'nocomments') => void navigate(paneToggleTo(pane)), [paneToggleTo, navigate]);
+  const enterFocus = useCallback(() => void navigate(focusTo), [focusTo, navigate]);
+  const showPanes = useCallback(() => void navigate(showPanesTo), [showPanesTo, navigate]);
+  const reportBusy = useCallback((busy: boolean) => setRefreshing(busy), []);
 
-  useKeyboardShortcuts({ selected, backTo, search: searchInput, helpOpen, onHelp: openHelp, onToggleArticle: toggleArticle, onToggleSaved: toggleSaved });
+  useKeyboardShortcuts({
+    selected, backTo, search: searchInput, dialogOpen: helpOpen || settingsOpen, panesHidden: hideFeed || hideComments,
+    onHelp: openHelp, onToggleArticle: toggleArticle, onTogglePane: togglePane,
+    onFocusMode: enterFocus, onShowPanes: showPanes, onToggleSaved: toggleSaved,
+  });
   useEffect(() => {
     if (!search && view !== 'saved') setVisited(previous => previous.includes(view) ? previous : [...previous, view]);
   }, [view, search]);
@@ -67,7 +101,10 @@ export default function App() {
   }, [selected, search, markRead]);
   useLayoutEffect(() => {
     if (!selected && previousSelection.current) {
-      document.querySelector<HTMLAnchorElement>(`.feed-panel:not([hidden]) [data-story-id="${previousSelection.current}"] h2 a`)?.focus({ preventScroll: true });
+      const row = document.querySelector<HTMLAnchorElement>(`.feed-panel:not([hidden]) [data-story-id="${previousSelection.current}"] h2 a`);
+      // A hidden row cannot take focus, so the reader itself catches it.
+      if (row?.offsetParent) row.focus({ preventScroll: true });
+      else document.getElementById('reader')?.focus({ preventScroll: true });
     }
     previousSelection.current = selected;
   }, [selected]);
@@ -76,6 +113,17 @@ export default function App() {
     else document.documentElement.dataset.theme = theme;
     writeStorage('hn-theme', theme);
   }, [theme]);
+  useEffect(() => {
+    if (!settings.refresh) return;
+    // Checked at the tick rather than by tearing the timer down, so a tab that
+    // is briefly backgrounded keeps its cadence.
+    const id = setInterval(() => { if (document.visibilityState === 'visible') setCheckAt(Date.now()); }, settings.refresh * 60_000);
+    return () => clearInterval(id);
+  }, [settings.refresh]);
+  function refreshNow() {
+    clearCache();
+    setRefreshAt(Date.now());
+  }
   function changeHideRead(on: boolean) {
     setHideRead(on);
     writeStorage('hn-hide-read', on ? '1' : '');
@@ -88,21 +136,24 @@ export default function App() {
   }
 
   const listProps = { selected, read, onRead: markRead, saved, onToggleSaved: toggleSaved, hrefSuffix: suffix };
-  return <div className="app-shell">
+  const feedProps = { refreshAt, checkAt, onBusy: reportBusy };
+  return <SettingsProvider value={settings}><div className="app-shell" data-width={settings.width} data-density={settings.density} data-order={settings.order}>
     <a className="skip-link" href="#reader">Skip to reader</a>
-    <header className="app-header"><Link className="brand" to="/" aria-label="HN Reader home"><span className="brand-mark">Y</span><span>hn<span className="brand-light">reader</span><span className="brand-period">.</span></span></Link><span className="header-tagline">A quieter corner of Hacker News.</span><div className="theme-control"><button type="button" className="icon-button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={openHelp}><Icon name="help" size={16} /></button><Icon name="sun" size={16} /><select aria-label="Color theme" value={theme} onChange={event => setTheme(event.target.value as Theme)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div></header>
+    <header className="app-header"><Link className="brand" to="/" aria-label="HN Reader home"><span className="brand-mark">Y</span><span>hn<span className="brand-light">reader</span><span className="brand-period">.</span></span></Link><span className="header-tagline">A quieter corner of Hacker News.</span><div className="theme-control">{!settings.heading && <button type="button" className={`icon-button refresh ${refreshing ? 'is-loading' : ''}`} aria-label="Refresh stories" title="Refresh stories" disabled={refreshing} onClick={refreshNow}><Icon name="refresh" size={16} /></button>}<button type="button" className="icon-button" aria-label="View settings" title="View settings" onClick={() => setSettingsOpen(true)}><Icon name="sliders" size={16} /></button><button type="button" className="icon-button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={openHelp}><Icon name="help" size={16} /></button><Icon name="sun" size={16} /><select aria-label="Color theme" value={theme} onChange={event => setTheme(event.target.value as Theme)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div></header>
     <nav className="feed-nav" aria-label="Story feeds"><div className="feed-tabs">{feeds.map(value => <Link key={value} to={`/?feed=${value}${suffix}`} aria-current={!search && value === view ? 'page' : undefined}><span>{value === 'top' && <span className="tab-star" aria-hidden="true">✳</span>}{value[0].toUpperCase() + value.slice(1)}</span>{value === 'ask' && <span className="nav-suffix">HN</span>}{value === 'show' && <span className="nav-suffix">HN</span>}</Link>)}
       <Link to={`/?feed=saved${suffix}`} aria-current={!search && view === 'saved' ? 'page' : undefined}><span>Saved</span>{saved.size > 0 && <span className="nav-suffix">{saved.size}</span>}</Link></div>
       <form className="search-form" role="search" onSubmit={submitSearch}><Icon name="search" size={14} /><input key={search} ref={searchInput} type="search" name="q" defaultValue={search} maxLength={200} placeholder="Search stories" aria-label="Search Hacker News stories" aria-keyshortcuts="/" />{search && <button type="button" className="text-button clear-search" onClick={() => void navigate(`/?feed=${view}${suffix}`)}>Clear</button>}</form></nav>
-    <main id="reader" tabIndex={-1} className={`reader ${selected || invalid ? 'has-selection' : ''} ${selected && showArticle ? 'has-article' : ''}`}>
+    <main id="reader" tabIndex={-1} className={`reader ${selected || invalid ? 'has-selection' : ''} ${selected && showArticle ? 'has-article' : ''} ${hideFeed ? 'hide-feed' : ''} ${hideComments ? 'hide-comments' : ''}`}>
       <div className="feed-column">
-        {feeds.map(value => <FeedPanel key={value} feed={value} active={!search && value === view} enabled={!search && visited.includes(value)} hideRead={hideRead} onHideRead={changeHideRead} {...listProps} />)}
+        {feeds.map(value => <FeedPanel key={value} feed={value} active={!search && value === view} enabled={!search && visited.includes(value)} hideRead={hideRead} onHideRead={changeHideRead} {...listProps} {...feedProps} />)}
         <SavedPanel active={!search && view === 'saved'} {...listProps} />
-        {search && <SearchPanel key={search} query={search} active hideRead={hideRead} onHideRead={changeHideRead} {...listProps} />}
+        {search && <SearchPanel key={search} query={search} active hideRead={hideRead} onHideRead={changeHideRead} {...listProps} {...feedProps} />}
       </div>
-      <div className="article-column">{opened.map(id => <Article key={id} id={id} active={id === selected} backTo={backTo} commentsTo={commentsTo} />)}</div>
-      <div className="discussion-column">{invalid ? <div className="invalid-route"><h1>Nothing to read here.</h1><p>This link doesn’t point to a valid story.</p><Link to="/">Back to the front page</Link></div> : <>{!selected && <EmptyDiscussion />}{opened.map(id => <Discussion key={id} id={id} backTo={backTo} active={id === selected} articleTo={articleTo} showArticle={showArticle} saved={saved.has(id)} onToggleSaved={() => toggleSaved(id)} />)}</>}</div>
+      <div className="article-column">{opened.map(id => <Article key={id} id={id} active={id === selected} backTo={backTo} commentsTo={commentsTo} hideComments={hideComments} commentsToggleTo={paneToggleTo('nocomments')} focusTo={focusTo} focused={hideFeed && hideComments} />)}</div>
+      <div className="discussion-column">{invalid ? <div className="invalid-route"><h1>Nothing to read here.</h1><p>This link doesn’t point to a valid story.</p><Link to="/">Back to the front page</Link></div> : <>{!selected && <EmptyDiscussion />}{opened.map(id => <Discussion key={id} id={id} backTo={backTo} active={id === selected} articleTo={articleTo} showArticle={showArticle} saved={saved.has(id)} onToggleSaved={() => toggleSaved(id)} hideFeed={hideFeed} feedToggleTo={paneToggleTo('nofeed')} />)}</>}</div>
     </main>
+    <ViewSettings open={settingsOpen} settings={settings} onChange={updateSettings} onClose={() => setSettingsOpen(false)}
+      onShortcuts={() => { setSettingsOpen(false); setHelpOpen(true); }} />
     <Shortcuts open={helpOpen} onClose={() => setHelpOpen(false)} />
-  </div>;
+  </div></SettingsProvider>;
 }

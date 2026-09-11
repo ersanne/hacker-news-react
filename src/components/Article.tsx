@@ -36,7 +36,10 @@ function Reader({ url }: { url: string }) {
   </>;
 }
 
-export default function Article({ id, active, backTo, commentsTo }: { id: number; active: boolean; backTo: string; commentsTo: string }) {
+export default function Article({ id, active, backTo, commentsTo, hideComments, commentsToggleTo, focusTo, focused }: {
+  id: number; active: boolean; backTo: string; commentsTo: string;
+  hideComments: boolean; commentsToggleTo: string; focusTo: string; focused: boolean;
+}) {
   const [item, setItem] = useState<HNItem | null>(null);
   const [busy, setBusy] = useState(true);
   const [mode, setMode] = useState<Mode>(() => readStorage('hn-article-mode') === 'embed' ? 'embed' : 'reader');
@@ -71,6 +74,8 @@ export default function Article({ id, active, backTo, commentsTo }: { id: number
           </div>
           <ExternalLink href={archiveUrl(url)}><Icon name="archive" size={13} /> archive.is</ExternalLink>
         </>}
+        <Link to={commentsToggleTo} className="pane-hide pane-comments">{hideComments ? 'Show comments' : 'Hide comments'}</Link>
+        <Link to={focusTo} className="icon-button pane-focus" aria-label={focused ? 'Leave focus mode' : 'Focus mode'} title={focused ? 'Leave focus mode' : 'Focus mode'} aria-pressed={focused}><Icon name="focus" size={14} /></Link>
         <Link to={commentsTo} className="pane-hide">Hide article</Link>
       </div>
     </div>

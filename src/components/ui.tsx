@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ago, domain, faviconUrl, sanitize } from '../format';
 
-export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help'; size?: number }) {
+export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus'; size?: number }) {
   const paths = {
     arrow: <><path d="M7 17 17 7M7 7h10v10" /></>,
     back: <><path d="m12 5-7 7 7 7M5 12h14" /></>,
@@ -15,6 +15,8 @@ export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' |
     star: <path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8Z" />,
     reader: <><path d="M4 5h16v14H4z" /><path d="M7 9h10M7 12.5h10M7 16h6" /></>,
     embed: <><path d="M3 5h18v14H3z" /><path d="M3 9h18" /><path d="M6 7h.01M9 7h.01" /></>,
+    sliders: <><path d="M4 7h10m4 0h2M4 17h4m4 0h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
+    focus: <><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" /></>,
     help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.7-.7 1.3v.3" /><path d="M12 17h.01" /></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;

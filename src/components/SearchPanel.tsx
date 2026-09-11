@@ -1,12 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clearCache, searchStories, type ItemResult } from '../api';
 import { ExternalLink, Failure, HideReadToggle, Icon, Skeleton } from './ui';
+import { useViewSettings } from '../settings';
 import StoryList from './StoryList';
 
-export default function SearchPanel({ query, active, selected, read, onRead, saved, onToggleSaved, hideRead, onHideRead, hrefSuffix }: {
+export default function SearchPanel({ query, active, selected, read, onRead, saved, onToggleSaved, hideRead, onHideRead, hrefSuffix, refreshAt, onBusy }: {
   query: string; active: boolean; selected: number | null; read: Set<number>; onRead: (id: number) => void;
   saved: Set<number>; onToggleSaved: (id: number) => void; hideRead: boolean; onHideRead: (on: boolean) => void; hrefSuffix: string;
+  refreshAt: number; checkAt: number; onBusy: (busy: boolean) => void;
 }) {
+  const settings = useViewSettings();
   const [items, setItems] = useState<ItemResult[]>([]);
   const [page, setPage] = useState(0);
   const [pages, setPages] = useState(0);
@@ -34,14 +37,18 @@ export default function SearchPanel({ query, active, selected, read, onRead, sav
     // The panel is keyed by the query, so a new search mounts a fresh panel.
   }, []);
   useLayoutEffect(() => { if (active && scrolling.current) scrolling.current.scrollTop = scrollTop.current; }, [active]);
+  useEffect(() => { if (active) onBusy(busy); }, [active, busy, onBusy]);
+  useEffect(() => {
+    if (refreshAt && active) void load(0);
+  }, [refreshAt]);
 
   const shown = hideRead ? items.filter(({ id }) => id === selected || !read.has(id)) : items;
   const heading = total === 1 ? '1 story found' : `${total.toLocaleString('en')} stories found`;
   return <section className="feed-panel" hidden={!active} aria-label={`Search results for ${query}`}>
-    <div className="feed-heading">
+    {settings.heading && <div className="feed-heading">
       <div><span className="eyebrow">SEARCH</span><h1>{query}</h1><p>{loaded && !error ? heading : 'Searching the Hacker News archive.'}</p></div>
       <button className={`icon-button refresh ${busy ? 'is-loading' : ''}`} aria-label="Search again" title="Search again" disabled={busy} onClick={() => { clearCache(); void load(0); }}><Icon name="refresh" /></button>
-    </div>
+    </div>}
     <div className="list-caption"><span>{busy ? 'SEARCHING…' : 'RESULTS'}</span><HideReadToggle on={hideRead} onChange={onHideRead} /></div>
     <div className="feed-scroll" ref={scrolling} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop; }}>
       {error && <Failure retry={() => void load(page && items.length ? page : 0)}>Couldn’t run that search. Your connection may need a moment.</Failure>}

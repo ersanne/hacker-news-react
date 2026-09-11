@@ -2,8 +2,11 @@ import { useEffect, type RefObject } from 'react';
 import { useNavigate } from 'react-router';
 import { archiveUrl } from './format';
 
+// focus() is a silent no-op on a hidden element, so a hidden feed column must
+// yield no rows at all rather than rows that cannot be reached.
 function rowLinks() {
-  return [...document.querySelectorAll<HTMLAnchorElement>('.feed-panel:not([hidden]) [data-story-id] h2 a')];
+  return [...document.querySelectorAll<HTMLAnchorElement>('.feed-panel:not([hidden]) [data-story-id] h2 a')]
+    .filter(link => link.offsetParent !== null);
 }
 function focusedRow(links: HTMLAnchorElement[], selected: number | null) {
   const index = links.indexOf(document.activeElement?.closest('[data-story-id]')?.querySelector('h2 a') as HTMLAnchorElement);
@@ -13,21 +16,25 @@ function focusedRow(links: HTMLAnchorElement[], selected: number | null) {
 
 // Shortcuts read the rendered list because only one feed panel is visible at a
 // time and its rows already carry story ids for focus restoration.
-export function useKeyboardShortcuts({ selected, backTo, search, helpOpen, onHelp, onToggleArticle, onToggleSaved }: {
+export function useKeyboardShortcuts({ selected, backTo, search, dialogOpen, panesHidden, onHelp, onToggleArticle, onTogglePane, onFocusMode, onShowPanes, onToggleSaved }: {
   selected: number | null;
   backTo: string;
   search: RefObject<HTMLInputElement | null>;
-  helpOpen: boolean;
+  dialogOpen: boolean;
+  panesHidden: boolean;
   onHelp: () => void;
   onToggleArticle: () => void;
+  onTogglePane: (pane: 'nofeed' | 'nocomments') => void;
+  onFocusMode: () => void;
+  onShowPanes: () => void;
   onToggleSaved: (id: number) => void;
 }) {
   const navigate = useNavigate();
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
-      // The help dialog handles its own Escape, and its content is not a feed.
-      if (helpOpen) return;
+      // An open dialog handles its own Escape, and its content is not a feed.
+      if (dialogOpen) return;
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) {
         if (event.key === 'Escape' && target === search.current) search.current?.blur();
@@ -46,12 +53,17 @@ export function useKeyboardShortcuts({ selected, backTo, search, helpOpen, onHel
       }
       if (event.key === 'Escape' && selected) {
         event.preventDefault();
-        void navigate(backTo);
+        // Panes come back before the story closes, so a hidden list is never a
+        // dead end for anyone who did not press the key that hid it.
+        if (panesHidden) onShowPanes(); else void navigate(backTo);
         return;
       }
-      if (event.key === 'r' && selected) {
+      if (['r', 'c', 'f', 'z'].includes(event.key) && selected) {
         event.preventDefault();
-        onToggleArticle();
+        if (event.key === 'r') onToggleArticle();
+        else if (event.key === 'c') onTogglePane('nocomments');
+        else if (event.key === 'f') onTogglePane('nofeed');
+        else onFocusMode();
         return;
       }
       if (!['j', 'k', 'o', 'a', 's'].includes(event.key)) return;
@@ -80,5 +92,5 @@ export function useKeyboardShortcuts({ selected, backTo, search, helpOpen, onHel
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selected, backTo, search, navigate, helpOpen, onHelp, onToggleArticle, onToggleSaved]);
+  }, [selected, backTo, search, navigate, dialogOpen, panesHidden, onHelp, onToggleArticle, onTogglePane, onFocusMode, onShowPanes, onToggleSaved]);
 }
