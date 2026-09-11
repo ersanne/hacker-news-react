@@ -12,10 +12,12 @@ const keys: [string, string][] = [
   ['x', 'Collapse or expand the focused comment'],
   ['X', 'Collapse or expand every thread'],
   ['Enter', 'Show or hide the replies to the focused comment'],
+  ['F', 'Find in this conversation'],
+  ['m / M', 'Jump to the next and previous match'],
   ['o', 'Open the original article in a new tab'],
   ['a', 'Open the article on archive.is'],
   ['s', 'Save or unsave the story'],
-  ['/', 'Search the Hacker News archive'],
+  ['/', 'Search the whole Hacker News archive'],
   ['Esc', 'Back to the story list'],
   ['?', 'Show this list'],
 ];

@@ -25,10 +25,11 @@ Read-only, keyboard-first, no account and no backend.
 |---|---|
 | 📚 **Five feeds** | Top, New, Best, Ask and Show, 30 stories per batch, refreshed only when you ask |
 | 🔍 **Full-text search** | The whole HN archive through Algolia, 30 per page, shareable as `/?q=…` |
-| 💬 **Discussions in place** | Beside the feed on desktop, its own screen below 1,024px, threads collapsible |
+| ✍️ **Comments as written** | Quotes, lists, backticks and footnotes read as markup; code blocks copy, wrap and fold |
+| 💬 **Discussions in place** | Beside the feed on desktop, its own screen below 1,024px, threads collapsible and searchable |
 | 📖 **Article pane** | Reader text or the page itself in a sandboxed frame, three columns from 1,400px |
 | 🔖 **Saved & read state** | A saved tab, read indicators, and a “Hide read” filter per feed |
-| ⌨️ **Keyboard-first** | `j` `k` to move, `Enter` to open, `r` for the article, `?` for the rest |
+| ⌨️ **Keyboard-first** | `j` `k` to move, `Enter` to open, `r` for the article, `F` to find in a thread, `?` for the rest |
 | 🌗 **Themes** | System, light and dark, with DM Sans and Newsreader served locally |
 | 🔗 **Real URLs** | Every view is linkable, Back and Forward behave, paywalls get an archive.is link |
 

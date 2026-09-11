@@ -156,3 +156,37 @@ test('focusing a search result fetches the story the results never carried', asy
   await page.keyboard.press('j');
   await expect.poll(() => requests).toContain(1);
 });
+
+test('F finds in the conversation, m steps, and Escape stays with the find', async ({ page }) => {
+  await mockAPI(page);
+  await mockComments(page);
+  await page.goto('/item?id=1&feed=top');
+  const discussion = page.getByRole('region', { name: 'Discussion', exact: true });
+
+  await page.keyboard.press('m');
+  await expect(discussion.locator('.comment.is-current')).toHaveCount(0);
+
+  await page.keyboard.press('F');
+  await expect(discussion.getByLabel('Find in comments')).toBeFocused();
+  await page.keyboard.type('Comment 12');
+  await expect(discussion.getByText('1 of 5')).toBeVisible();
+
+  // Enter belongs to the find while the field has focus.
+  await page.keyboard.press('Enter');
+  await expect(discussion.getByText('2 of 5')).toBeVisible();
+  await page.keyboard.press('Shift+Enter');
+  await expect(discussion.getByText('1 of 5')).toBeVisible();
+
+  // So does Escape, which must not take the reader back to the list.
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL('/item?id=1&feed=top');
+  await expect(discussion.getByText('1 of 5')).toBeHidden();
+  await expect(discussion.locator('mark')).toHaveCount(0);
+
+  await page.keyboard.press('F');
+  await page.keyboard.type('Comment 12');
+  await expect(discussion.getByText('1 of 5')).toBeVisible();
+  await discussion.locator('.comment').first().click();
+  await page.keyboard.press('m');
+  await expect(discussion.getByText('2 of 5')).toBeVisible();
+});

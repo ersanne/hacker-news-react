@@ -81,6 +81,21 @@ export function useKeyboardShortcuts({ selected, backTo, search, dialogOpen, pan
         else onFocusMode();
         return;
       }
+      if (event.key === 'F') {
+        const finding = document.querySelector<HTMLInputElement>('.discussion-panel:not([hidden]) .find-control input');
+        if (!finding) return;
+        event.preventDefault();
+        finding.focus();
+        finding.select();
+        return;
+      }
+      if (event.key === 'm' || event.key === 'M') {
+        const step = document.querySelector<HTMLButtonElement>(`.discussion-panel:not([hidden]) .find-${event.key === 'm' ? 'next' : 'previous'}`);
+        if (!step || step.disabled) return;
+        event.preventDefault();
+        step.click();
+        return;
+      }
       if (event.key === 'X') {
         const fold = document.querySelector<HTMLButtonElement>('.discussion-panel:not([hidden]) .collapse-all');
         if (!fold) return;
