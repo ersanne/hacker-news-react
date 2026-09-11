@@ -69,11 +69,16 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
     return () => { current = false; };
   }, [id, commentsAttempt]);
   useEffect(() => {
-    if (active && !busy) {
-      document.title = `${item ? plainTitle(item.title) : 'Story unavailable'} — HN Reader`;
-      heading.current?.focus({ preventScroll: true });
-    }
-  }, [active, busy, item]);
+    if (!active || busy) return;
+    document.title = `${item ? plainTitle(item.title) : 'Story unavailable'} — HN Reader`;
+    // The heading appears only once the item has loaded, so focus reaches it
+    // after the story opened. It is taken from the row the story was opened
+    // from and from nowhere else: the list stays beside the story, so focus
+    // anywhere further along it belongs to the reader stepping on with j or k.
+    const focused = document.activeElement;
+    const ownRow = focused?.closest('[data-story-id]')?.getAttribute('data-story-id') === String(id);
+    if (ownRow || !focused || focused === document.body) heading.current?.focus({ preventScroll: true });
+  }, [active, busy, item, id]);
   const url = safeUrl(item?.url);
   const threads = useMemo(() => {
     if (!comments || order === 'hn') return comments ?? [];
