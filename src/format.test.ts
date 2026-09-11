@@ -1,27 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { archiveUrl, domain, plainTitle, readingTime, safeUrl, sanitize, sanitizeArticle, shareUrl } from './format';
+import { archiveUrl, domain, plainTitle, readingTime, safeUrl, sanitizeArticle, shareUrl } from './format';
 
 describe('untrusted HN content', () => {
-  it('preserves readable formatting while stripping scripts, handlers, and unsafe links', () => {
-    const html = sanitize('<p>Hello <em>world</em><script>alert(1)</script><img src=x onerror=alert(1)><a href="javascript:alert(1)">bad</a><a href="https://example.com" onclick="alert(1)">good</a></p><pre><code>const x = 1</code></pre>');
-    expect(html).toContain('<em>world</em>');
-    expect(html).toContain('<pre><code>const x = 1</code></pre>');
-    expect(html).toContain('href="https://example.com"');
-    expect(html).not.toMatch(/script|onerror|onclick|<img/);
-  });
-  it('gives the opening block of a comment the paragraph HN leaves off', () => {
-    expect(sanitize('First line<p>Second line')).toBe('<p>First line</p><p>Second line</p>');
-    expect(sanitize('Text with <i>markup</i><p>Second')).toBe('<p>Text with <i>markup</i></p><p>Second</p>');
-    expect(sanitize('<p>Already a paragraph')).toBe('<p>Already a paragraph</p>');
-    expect(sanitize('<pre><code>code first</code></pre><p>After')).toBe('<pre><code>code first</code></pre><p>After</p>');
-  });
-  it('lifts a quote that opens a comment, where HN writes no paragraph at all', () => {
-    expect(sanitize('&gt; quoted<p>A reply')).toBe('<blockquote><p>quoted</p></blockquote><p>A reply</p>');
-  });
-  it('turns the plain-text quote markers HN uses into blockquotes', () => {
-    const html = sanitize('<p>&gt; first line</p><p>&gt; second line</p><p>A reply</p>');
-    expect(html).toBe('<blockquote><p>first line</p><p>second line</p></blockquote><p>A reply</p>');
-  });
   it('accepts only absolute HTTP or HTTPS article links', () => {
     expect(safeUrl('javascript:alert(1)')).toBeUndefined();
     expect(safeUrl('data:text/html,hello')).toBeUndefined();

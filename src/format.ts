@@ -18,60 +18,20 @@ export function plainTitle(value = 'Untitled story') {
   element.innerHTML = value;
   return element.value;
 }
-const COMMENT_TAGS = ['p', 'a', 'em', 'i', 'strong', 'b', 'code', 'pre', 'blockquote', 'br', 'ul', 'ol', 'li'];
-const ARTICLE_TAGS = [...COMMENT_TAGS, 'h1', 'h2', 'h3', 'h4', 'hr', 'img', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
+// Extracted article markdown renders headings, images and tables that comment
+// HTML never contains, so it gets its own allowlist. Comment text is parsed
+// into a render tree instead — see richtext.ts.
+const ARTICLE_TAGS = ['p', 'a', 'em', 'i', 'strong', 'b', 'code', 'pre', 'blockquote', 'br', 'ul', 'ol', 'li',
+  'h1', 'h2', 'h3', 'h4', 'hr', 'img', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
 
-function clean(value: string, tags: string[], attributes: string[], transform?: (root: ParentNode) => void) {
+export function sanitizeArticle(value: string) {
   const template = document.createElement('template');
-  template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: tags, ALLOWED_ATTR: attributes });
+  template.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: ARTICLE_TAGS, ALLOWED_ATTR: ['href', 'title', 'src', 'alt'] });
   for (const link of template.content.querySelectorAll('a')) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
   }
-  transform?.(template.content);
   return template.innerHTML;
-}
-const BLOCKS = new Set(['P', 'PRE', 'BLOCKQUOTE', 'UL', 'OL']);
-// HN opens a comment with bare text and only starts a <p> at the first blank
-// line, so the opening block is wrapped to give it the paragraph the rest of
-// the passes — and the paragraph spacing — expect every block to have.
-function wrapLeadingBlock(root: ParentNode) {
-  const leading: Node[] = [];
-  for (const node of root.childNodes) {
-    if (node.nodeType === Node.ELEMENT_NODE && BLOCKS.has((node as Element).tagName)) break;
-    leading.push(node);
-  }
-  if (!leading.some(node => (node.textContent ?? '').trim())) return;
-  const paragraph = document.createElement('p');
-  root.insertBefore(paragraph, leading[0]);
-  paragraph.append(...leading);
-}
-// HN marks quoted text with a leading ">" in the paragraph itself, so the
-// markers are lifted into real blockquotes and adjacent quoted lines join up.
-function liftQuotes(root: ParentNode) {
-  let quote: HTMLQuoteElement | null = null;
-  for (const paragraph of [...root.querySelectorAll('p')]) {
-    if (!/^\s*>/.test(paragraph.textContent ?? '')) { quote = null; continue; }
-    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
-    const first = walker.nextNode();
-    if (first) first.nodeValue = (first.nodeValue ?? '').replace(/^\s*>+\s?/, '');
-    if (!quote || paragraph.previousElementSibling !== quote) {
-      quote = document.createElement('blockquote');
-      paragraph.replaceWith(quote);
-    }
-    quote.append(paragraph);
-  }
-}
-export function sanitize(value: string) {
-  return clean(value, COMMENT_TAGS, ['href', 'title'], root => {
-    wrapLeadingBlock(root);
-    liftQuotes(root);
-  });
-}
-// Extracted article markdown renders headings, images and tables that comment
-// HTML never contains, so it gets its own wider allowlist.
-export function sanitizeArticle(value: string) {
-  return clean(value, ARTICLE_TAGS, ['href', 'title', 'src', 'alt']);
 }
 export function readingTime(text: string) {
   const words = text.trim().split(/\s+/).filter(Boolean).length;

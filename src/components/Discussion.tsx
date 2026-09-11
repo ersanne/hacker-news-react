@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { getComments, getItem, type Comment, type HNItem } from '../api';
 import { domain, hnUrl, plainTitle, safeUrl, shareUrl } from '../format';
-import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, RichText, SaveButton, ShareButton, Skeleton, Time } from './ui';
+import { Author, ExternalLink, Failure, Favicon, Icon, OpenIn, SaveButton, ShareButton, Skeleton, Time } from './ui';
+import RichText from './RichText';
 
 // Item ids are handed out in order, so they sort by age.
 type Order = 'hn' | 'newest' | 'oldest';

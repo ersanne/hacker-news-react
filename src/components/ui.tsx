@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ago, archiveUrl, domain, faviconUrl, hnUrl, sanitize } from '../format';
+import { ago, archiveUrl, domain, faviconUrl, hnUrl } from '../format';
 
 export function Icon({ name, size = 18 }: { name: 'arrow' | 'back' | 'refresh' | 'comment' | 'sun' | 'chevron' | 'book' | 'search' | 'archive' | 'star' | 'reader' | 'embed' | 'help' | 'sliders' | 'focus' | 'share'; size?: number }) {
   const paths = {
@@ -108,9 +108,6 @@ export function Author({ name }: { name?: string }) {
 }
 export function Time({ value }: { value?: number }) {
   return <time dateTime={value ? new Date(value * 1000).toISOString() : undefined} title={value ? new Date(value * 1000).toLocaleString() : undefined}>{ago(value)}</time>;
-}
-export function RichText({ text }: { text: string }) {
-  return <div className="prose" dangerouslySetInnerHTML={{ __html: sanitize(text) }} />;
 }
 export function Failure({ children, retry }: { children: ReactNode; retry?: () => void }) {
   return <div className="failure" role="alert"><span>{children}</span>{retry && <button className="text-button" onClick={retry}>Try again <Icon name="refresh" size={14} /></button>}</div>;
