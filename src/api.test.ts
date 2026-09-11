@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearCache, getArticle, getFeed, getItem, getItems, prefetchStory, searchStories } from './api';
+import { clearCache, getArticle, getComments, getFeed, getItem, getItems, prefetchStory, searchStories } from './api';
 
 beforeEach(() => { clearCache(); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -59,6 +59,33 @@ describe('HN data client', () => {
     await expect(getItem(8)).resolves.toEqual({ id: 8 });
   });
 
+  it('flattens the Algolia comment tree and marks deleted comments', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => { urls.push(url); return response({
+      id: 7,
+      children: [
+        { id: 71, author: 'ada', text: '<p>First</p>', created_at_i: 1700000000, children: [
+          { id: 711, author: null, text: null, created_at_i: 1700000100, children: [
+            { id: 7111, author: 'grace', text: '<p>Still here</p>', created_at_i: 1700000200, children: [] },
+          ] },
+        ] },
+        { id: null, author: 'nobody', text: '<p>No id</p>' },
+      ],
+    }); }));
+    expect(await getComments(7)).toEqual([
+      { id: 71, by: 'ada', text: '<p>First</p>', time: 1700000000, removed: false, kids: [
+        { id: 711, by: undefined, text: undefined, time: 1700000100, removed: true, kids: [
+          { id: 7111, by: 'grace', text: '<p>Still here</p>', time: 1700000200, removed: false, kids: [] },
+        ] },
+      ] },
+    ]);
+    expect(urls[0]).toBe('https://hn.algolia.com/api/v1/items/7');
+  });
+  it('reports a discussion Algolia has not indexed yet', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false }) as Response));
+    await expect(getComments(9)).rejects.toThrow('could not be reached');
+  });
+
   it('maps search hits to stories and reports paging', async () => {
     const urls: string[] = [];
     const fetcher = vi.fn(async (url: string) => { urls.push(url); return response({
@@ -98,16 +125,14 @@ describe('HN data client', () => {
     expect(fetcher.mock.calls[0][0]).toBe('https://r.jina.ai/https://example.com/a');
     await expect(getArticle('https://example.com/empty')).rejects.toThrow('No readable article');
   });
-  it('prefetches a story and its first comments once, and retries after a failure', async () => {
-    const fetcher = vi.fn(async (url: string) => url.includes('/item/5.json')
-      ? response({ id: 5, kids: Array.from({ length: 25 }, (_, i) => 100 + i) })
-      : response({ id: 1 }));
+  it('prefetches a story and its comments once, and retries after a failure', async () => {
+    const fetcher = vi.fn(async () => response({ id: 5 }));
     vi.stubGlobal('fetch', fetcher);
     await prefetchStory(5);
-    // The story itself plus the twenty comments the discussion opens with.
-    expect(fetcher).toHaveBeenCalledTimes(21);
+    // The story from the item API and the whole thread from Algolia.
+    expect(fetcher).toHaveBeenCalledTimes(2);
     await prefetchStory(5);
-    expect(fetcher).toHaveBeenCalledTimes(21);
+    expect(fetcher).toHaveBeenCalledTimes(2);
 
     clearCache();
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false }) as Response));
@@ -115,7 +140,7 @@ describe('HN data client', () => {
     const retry = vi.fn(async () => response({ id: 6 }));
     vi.stubGlobal('fetch', retry);
     await prefetchStory(6);
-    expect(retry).toHaveBeenCalledTimes(1);
+    expect(retry).toHaveBeenCalledTimes(2);
   });
   it('drops a leading heading that only repeats the article title', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({ data: { title: 'The Quiet Web — a blog', content: '# The Quiet Web\n\nBody text.' } })));

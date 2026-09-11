@@ -16,7 +16,7 @@ export type HNItem = {
 };
 
 const HN_API = 'https://hacker-news.firebaseio.com/v0';
-const SEARCH_API = 'https://hn.algolia.com/api/v1/search';
+const ALGOLIA_API = 'https://hn.algolia.com/api/v1';
 const READER_API = 'https://r.jina.ai/';
 const TTL = 5 * 60 * 1000;
 const cache = new Map<string, { value: unknown; expires: number }>();
@@ -62,17 +62,14 @@ export function getFeed(feed: Feed, fresh = false) {
 export function clearCache() { cache.clear(); prefetched.clear(); }
 
 const prefetched = new Set<number>();
-// Pointing at a row usually precedes opening it, so the first batch of comments
-// the discussion renders is fetched before the click. Search results also reach
-// the item API for the first time here.
+// Pointing at a row usually precedes opening it, so the story and its comments
+// are fetched before the click. Search results also reach the item API for the
+// first time here.
 export async function prefetchStory(id: number) {
   if (prefetched.has(id)) return;
   prefetched.add(id);
-  try {
-    const item = await getItem(id);
-    const kids = item?.kids?.slice(0, 20) ?? [];
-    if (kids.length) await getItems(kids);
-  } catch { prefetched.delete(id); }
+  try { await Promise.all([getItem(id), getComments(id)]); }
+  catch { prefetched.delete(id); }
 }
 
 export type ItemResult = { id: number; item: HNItem | null; error: boolean };
@@ -81,6 +78,28 @@ export async function getItems(ids: number[]): Promise<ItemResult[]> {
     try { return { id, item: await getItem(id), error: false }; }
     catch { return { id, item: null, error: true }; }
   }));
+}
+
+export type Comment = { id: number; by?: string; text?: string; time?: number; removed: boolean; kids: Comment[] };
+type AlgoliaNode = { id?: number | null; author?: string | null; text?: string | null; created_at_i?: number | null; children?: AlgoliaNode[] | null };
+
+function thread(node: AlgoliaNode): Comment[] {
+  return (node.children ?? []).flatMap<Comment>(child => {
+    const id = Number(child.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return [];
+    const by = child.author ?? undefined;
+    const text = child.text ?? undefined;
+    // Algolia keeps deleted comments in the tree with no author or text so the
+    // replies underneath them stay reachable.
+    return [{ id, by, text, time: child.created_at_i ?? undefined, removed: !by && !text, kids: thread(child) }];
+  });
+}
+
+// Algolia returns the whole discussion nested in one response, so the tree is
+// read in a single request rather than followed id by id through the item API.
+// It indexes on a delay, so a story posted moments ago may not be there yet.
+export async function getComments(id: number): Promise<Comment[]> {
+  return thread(await request<AlgoliaNode>(`${ALGOLIA_API}/items/${id}`));
 }
 
 export const SEARCH_PAGE_SIZE = 30;
@@ -105,7 +124,7 @@ export async function searchStories(query: string, page = 0): Promise<SearchPage
     hitsPerPage: String(SEARCH_PAGE_SIZE),
     page: String(page),
   });
-  const data = await request<{ hits?: SearchHit[]; nbPages?: number; nbHits?: number }>(`${SEARCH_API}?${params}`);
+  const data = await request<{ hits?: SearchHit[]; nbPages?: number; nbHits?: number }>(`${ALGOLIA_API}/search?${params}`);
   const results = (data.hits ?? []).flatMap<ItemResult>(hit => {
     const id = Number(hit.objectID);
     if (!Number.isSafeInteger(id) || id <= 0) return [];
