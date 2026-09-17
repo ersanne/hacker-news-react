@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState
 import { Link } from 'react-router';
 import { getComments, getItem, type Comment, type HNItem } from '../api';
 import { domain, hnUrl, plainTitle, safeUrl, shareUrl } from '../format';
+import { usePageMeta } from '../seo';
 import { ancestorsOf, excerpt, findMatches, FLAT_DEPTH, indexThread, MIN_QUERY, opensByDefault, ThreadProvider, useThread } from '../thread';
 import { plainText } from '../richtext';
 import { useViewSettings } from '../settings';
@@ -113,9 +114,9 @@ export default function Discussion({ id, backTo, active, articleTo, showArticle,
     void getComments(id).then(result => { if (current) setComments(result); }).catch(() => { if (current) setCommentsError(true); });
     return () => { current = false; };
   }, [id, commentsAttempt]);
+  usePageMeta(active && !busy ? { kind: 'story', id, title: item ? plainTitle(item.title) : undefined } : null);
   useEffect(() => {
     if (!active || busy) return;
-    document.title = `${item ? plainTitle(item.title) : 'Story unavailable'} — HN Reader`;
     // The heading appears only once the item has loaded, so focus reaches it
     // after the story opened. It is taken from the row the story was opened
     // from and from nowhere else: the list stays beside the story, so focus

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+# Search results and the saved list are per-reader, and thin or empty to anyone
+# else. Story pages stay crawlable so their noindex is read and their links
+# followed.
+Disallow: /*?*q=
+Disallow: /*?*feed=saved
+
+Sitemap: https://hn.eriksanne.com/sitemap.xml

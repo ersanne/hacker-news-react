@@ -87,7 +87,9 @@ Theme, article view, the “Hide read” setting and the latest 2,000 opened and
 <details>
 <summary><b>Hosting</b></summary>
 
-`pnpm run build` produces `dist/` with a `404.html` copy of `index.html`: GitHub Pages serves that for unknown paths, which is what keeps direct discussion links working.
+`pnpm run build` ends in `scripts/prerender.ts`, which snapshots the front page out of a headless Chromium — the app ships an empty `#root`, so without it anything that does not run JavaScript sees a blank page. The same script writes the other two entry points: `item.html`, so `/item?id=N` is served with a 200 rather than falling through to the 404, and `404.html` for unknown paths, which is what keeps every other direct link working. Both carry `noindex, follow`. A failed snapshot falls back to the plain shell rather than breaking the build.
+
+`sitemap.xml` is written by the same script; `robots.txt`, the share card and the icons are static files in `public/`.
 
 `.github/workflows/pages.yml` runs the checks and publishes `dist/` from `main`. `pnpm run build` deploys nothing by itself.
 

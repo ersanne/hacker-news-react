@@ -23,7 +23,7 @@ export default typescript.config(
     },
   },
   {
-    files: ['*.config.{ts,js}', 'tests/**/*.ts'],
+    files: ['*.config.{ts,js}', 'tests/**/*.ts', 'scripts/**/*.ts'],
     languageOptions: { globals: globals.node },
   },
   { files: ['eslint.config.js'], ...typescript.configs.disableTypeChecked },

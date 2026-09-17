@@ -10,13 +10,14 @@ import ViewSettings from './components/ViewSettings';
 import Discussion, { EmptyDiscussion } from './components/Discussion';
 import { Icon } from './components/ui';
 import { useKeyboardShortcuts } from './keyboard';
+import { tabLabels } from './feeds';
+import { usePageMeta } from './seo';
 import { SettingsProvider, useSettings } from './settings';
 import { readStorage, useReadStories, useSavedStories, writeStorage } from './storage';
 
 type Theme = 'system' | 'light' | 'dark';
 type View = Feed | 'saved';
 const views: View[] = [...feeds, 'saved'];
-const tabLabels: Record<Feed, string> = { top: 'Top', new: 'New', best: 'Best', ask: 'Ask HN', show: 'Show HN' };
 // Below this width the reading panes are exclusive rather than side by side
 // (styles.css draws the same line), so the article is a view to leave rather
 // than an arrangement to carry back to the list.
@@ -40,8 +41,11 @@ export default function App() {
   const view = views.includes(query.get('feed') as View) ? query.get('feed') as View : 'top';
   const search = (query.get('q') ?? '').trim().slice(0, 200);
   const rawId = query.get('id');
-  const selected = location.pathname === '/item' && rawId && /^\d+$/.test(rawId) && Number.isSafeInteger(Number(rawId)) && Number(rawId) > 0 ? Number(rawId) : null;
-  const invalid = location.pathname !== '/' && (location.pathname !== '/item' || !selected);
+  // A static host is free to answer /item with a redirect to /item/, so the
+  // trailing slash names the same story.
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  const selected = path === '/item' && rawId && /^\d+$/.test(rawId) && Number.isSafeInteger(Number(rawId)) && Number(rawId) > 0 ? Number(rawId) : null;
+  const invalid = path !== '/' && (path !== '/item' || !selected);
   const showArticle = query.get('article') === '1';
   const singlePane = useMediaQuery(SINGLE_PANE);
   const suffix = showArticle && !singlePane ? '&article=1' : '';
@@ -107,15 +111,21 @@ export default function App() {
     onHelp: openHelp, onToggleArticle: toggleArticle, onTogglePane: togglePane,
     onFocusMode: enterFocus, onShowPanes: showPanes, onToggleSaved: toggleSaved,
   });
+  // An open story describes the page from Discussion, which is the only place
+  // that knows its title.
+  usePageMeta(selected ? null
+    : invalid ? { kind: 'invalid' }
+    : search ? { kind: 'search', query: search }
+    : view === 'saved' ? { kind: 'saved' }
+    : { kind: 'feed', feed: view });
   useEffect(() => {
     if (!search && view !== 'saved') setVisited(previous => previous.includes(view) ? previous : [...previous, view]);
   }, [view, search]);
   useEffect(() => {
-    if (selected) {
-      setOpened(previous => [...previous.filter(id => id !== selected), selected].slice(-10));
-      markRead(selected);
-    } else document.title = search ? `${search} — HN Reader` : 'HN Reader — A little less noise.';
-  }, [selected, search, markRead]);
+    if (!selected) return;
+    setOpened(previous => [...previous.filter(id => id !== selected), selected].slice(-10));
+    markRead(selected);
+  }, [selected, markRead]);
   useLayoutEffect(() => {
     if (!selected && previousSelection.current) {
       const row = document.querySelector<HTMLAnchorElement>(`.feed-panel:not([hidden]) [data-story-id="${previousSelection.current}"] h2 a`);

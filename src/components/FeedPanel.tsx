@@ -1,16 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clearCache, getFeed, getItems, type Feed, type ItemResult } from '../api';
 import { ExternalLink, Failure, FeedFooter, HideReadToggle, Icon, Skeleton } from './ui';
+import { feedInfo } from '../feeds';
 import { useViewSettings } from '../settings';
 import StoryList from './StoryList';
-
-const feedInfo = {
-  top: { title: 'The front page', description: 'What’s catching the community’s attention.' },
-  new: { title: 'Fresh off the keyboard', description: 'The latest submissions, as they arrive.' },
-  best: { title: 'Worth your time', description: 'The stories that stayed with the community.' },
-  ask: { title: 'A good question', description: 'Questions, perspectives, and collective wisdom.' },
-  show: { title: 'Made by the community', description: 'Side projects, big ideas, and things people built.' },
-};
 
 export default function FeedPanel({ feed, active, enabled, selected, read, onRead, saved, onToggleSaved, hideRead, onHideRead, hrefSuffix, refreshAt, checkAt, onBusy }: {
   feed: Feed; active: boolean; enabled: boolean; selected: number | null; read: Set<number>; onRead: (id: number) => void;

@@ -50,6 +50,9 @@ export function ago(timestamp?: number) {
 // capture one when it has none.
 export const archiveUrl = (url: string) => `https://archive.is/newest/${url}`;
 export const hnUrl = (id: number) => `https://news.ycombinator.com/item?id=${id}`;
+// Resolved against the running origin rather than the deployed one, so a
+// BASE_PATH build and local dev each describe themselves.
+export const siteUrl = (path: string) => new URL(`${import.meta.env.BASE_URL}${path}`, window.location.origin).href;
 // The shared link carries the story alone: the pane layout in the sender's URL
 // is their reading arrangement, not part of what they are pointing at.
-export const shareUrl = (id: number) => new URL(`${import.meta.env.BASE_URL}item?id=${id}`, window.location.origin).href;
+export const shareUrl = (id: number) => siteUrl(`item?id=${id}`);

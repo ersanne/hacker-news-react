@@ -46,6 +46,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The build snapshots the front page out of a real browser — see
+      # scripts/prerender.ts.
+      - run: pnpm exec playwright install --with-deps chromium
       # public/CNAME points the site at hn.eriksanne.com, which serves it at the
       # domain root, so BASE_PATH stays unset.
       - run: pnpm run build
