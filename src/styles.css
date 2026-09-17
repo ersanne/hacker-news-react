@@ -130,23 +130,28 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .discussion-toolbar { min-height: 46px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; font-size: 10px; color: var(--muted); }
 .discussion-toolbar a { display: inline-flex; gap: 7px; align-items: center; padding-block: 12px; }
 .discussion-scroll { position: relative; overflow-y: auto; flex: 1; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.discussion-inner { max-width: 680px; margin: 0 auto; padding: var(--pane-pad, 30px 44px) 20px; }
+.discussion-inner { container-type: inline-size; max-width: 680px; margin: 0 auto; padding: var(--pane-pad, 30px 44px) 20px; }
 .article-heading h2 { font-family: var(--serif); font-size: clamp(28px, 2.4vw, 36px); font-weight: 450; line-height: 1.16; letter-spacing: -.5px; margin: 11px 0 15px; overflow-wrap: anywhere; }
 .article-heading h2:focus { outline: none; }
 .article-heading.is-compact h2 { font-family: var(--sans); font-size: 17px; font-weight: 600; letter-spacing: -.2px; line-height: 1.35; margin: 0 0 8px; }
 .article-heading.is-compact { border-bottom: 1px solid var(--line); padding-bottom: 16px; }
 .article-meta { display: flex; flex-wrap: wrap; gap: 9px 15px; font-size: 11px; color: var(--muted); }
-.article-links > .open-in summary { color: var(--muted); }
-.article-link { display: inline-flex; gap: 20px; align-items: center; background: var(--text); color: var(--surface); padding: 10px 15px; font-size: 11px; border-radius: 5px; margin-top: 18px; }
+.article-links > .open-in summary { height: 100%; padding: 10px 15px; color: var(--muted); }
+.article-link { display: inline-flex; gap: 20px; align-items: center; background: var(--text); color: var(--surface); padding: 10px 15px; font-size: 11px; border-radius: 5px; }
 .article-link:hover { color: var(--surface); opacity: .85; }
 .story-body { margin-top: 22px; }
 .discussion-label { margin-top: 28px; border-block: 1px solid var(--line); padding: 14px 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
 .discussion-label h3 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 12px; font-weight: 550; white-space: nowrap; }
 .discussion-label h3 > span { font-size: 10px; font-weight: 400; background: var(--line); padding: 2px 6px; border-radius: 4px; }
-.label-controls { display: flex; align-items: center; gap: 12px 14px; flex-wrap: wrap; margin-left: auto; }
-.find-control { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 4px 10px; }
+/* Sits at the end of the heading's row, and takes a line of its own once under
+   220px is left for it: flex breaks a line on the basis, not on the width an
+   item could shrink to. */
+.label-controls { display: flex; align-items: center; justify-content: flex-end; gap: 12px 14px; flex: 1 1 220px; min-width: 0; }
+/* The find field carries the row's slack: it takes the spare width and gives it
+   back first, so the controls stay on the heading's line. */
+.find-control { display: inline-flex; flex: 1 1 150px; max-width: 260px; min-width: 0; align-items: center; gap: 6px; color: var(--muted); border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 4px 10px; }
 .find-control:focus-within { border-color: var(--accent); color: var(--accent); }
-.find-control input { font: inherit; font-size: 11px; width: 118px; border: 0; padding: 2px 0; background: transparent; color: var(--text); }
+.find-control input { font: inherit; font-size: 11px; width: 100%; min-width: 0; border: 0; padding: 2px 0; background: transparent; color: var(--text); }
 .find-control input::placeholder { color: var(--subtle); }
 .find-control input:focus-visible { outline: none; }
 .find-control input::-webkit-search-cancel-button { display: none; }
@@ -158,9 +163,16 @@ svg { flex-shrink: 0; vertical-align: middle; }
 /* The match being visited is the one the thread was opened for. */
 .comment.is-current > .comment-header .avatar { background: var(--accent-soft); color: var(--accent); }
 .comment.is-current > .comment-header::after { content: ''; position: absolute; left: -14px; top: -4px; bottom: -4px; width: 2px; background: var(--accent); border-radius: 2px; }
-.sort-control { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+.sort-control { display: inline-flex; flex: none; align-items: center; gap: 6px; white-space: nowrap; font-size: 10px; color: var(--muted); }
 .sort-control select { background: transparent; border: 1px solid var(--line); border-radius: 5px; color: var(--text); padding: 5px 7px; font-size: 11px; cursor: pointer; }
 .sort-control option { background: var(--surface); }
+/* Below this the heading and its controls no longer share a line at full size,
+   so the row sheds its widest parts before it wraps. */
+@container (max-width: 540px) {
+  .discussion-label, .label-controls { gap: 10px; }
+  .sort-label { display: none; }
+  .find-control { flex-basis: 86px; }
+}
 .comment { padding: var(--comment-pad, 18px 0 17px); border-bottom: 1px solid var(--line); }
 /* A comment spans the column, so the ring sits inside its padding instead of
    straddling the neighbours above and below. */
@@ -233,7 +245,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .story-failure { display: flex; gap: 10px; padding: 14px 20px 14px 18px; border-bottom: 1px solid var(--line); }
 .story-failure .failure { flex: 1; padding: 12px; }
 .story-unavailable { display: flex; gap: 12px; padding: 14px 20px 14px 18px; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--line); }
-.text-button { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--accent); padding: 4px 0; font-size: 11px; }
+.text-button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; border: 0; background: transparent; color: var(--accent); padding: 4px 0; font-size: 11px; }
 .text-button:hover { text-decoration: underline; }
 .more-comments { margin: 20px 0; }
 .load-more-wrap { display: flex; flex-direction: column; align-items: center; padding: 22px; gap: 10px; }
@@ -271,7 +283,7 @@ svg { flex-shrink: 0; vertical-align: middle; }
 .article-scroll { position: relative; overflow-y: auto; flex: 1; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .article-inner { max-width: 720px; margin: 0 auto; padding: var(--pane-pad, 30px 44px) 40px; }
 .article-stats { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; font-size: 10px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--subtle); }
-.article-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 18px; font-size: 11px; }
+.article-links { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 18px; margin-top: 18px; font-size: 11px; }
 .article-links > a:not(.article-link) { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
 .article-body { font-family: var(--serif); font-size: 17px; line-height: var(--article-line, 1.75); margin-top: 26px; overflow-wrap: anywhere; }
 .article-body h1, .article-body h2, .article-body h3, .article-body h4 { font-weight: 550; line-height: 1.3; margin: 32px 0 12px; }
