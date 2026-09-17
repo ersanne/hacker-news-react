@@ -99,6 +99,12 @@ export function OpenIn({ url, id, title = '' }: { url?: string; id: number; titl
 export function ExternalLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
   return <a href={href} className={className} target="_blank" rel="noopener noreferrer">{children}<span className="sr-only"> (opens in a new tab)</span></a>;
 }
+export function Byline() {
+  return <ExternalLink className="byline" href="https://eriksanne.com/?utm_source=hn-reader&utm_medium=footer">Built by Erik Sanne</ExternalLink>;
+}
+export function FeedFooter({ children }: { children: ReactNode }) {
+  return <footer className="feed-footer"><span className="live-dot" /><span className="footer-note">{children}</span><Byline /></footer>;
+}
 export function Author({ name }: { name?: string }) {
   return name ? <ExternalLink href={`https://news.ycombinator.com/user?id=${encodeURIComponent(name)}`}>{name}</ExternalLink> : <span>unknown author</span>;
 }

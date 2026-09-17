@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getItems, type ItemResult } from '../api';
-import { Icon, Skeleton } from './ui';
+import { FeedFooter, Icon, Skeleton } from './ui';
 import { useViewSettings } from '../settings';
 import StoryList from './StoryList';
 
@@ -41,6 +41,6 @@ export default function SavedPanel({ active, selected, saved, read, onRead, onTo
       <StoryList items={items} selected={selected} read={read} onRead={onRead} saved={saved} onToggleSaved={onToggleSaved}
         onRetry={id => void retryItem(id)} href={id => `/item?id=${id}&feed=saved${hrefSuffix}`} fallbackSource="Hacker News" />
     </div>
-    <footer className="feed-footer"><span className="live-dot" />Kept in this browser only</footer>
+    <FeedFooter>Kept in this browser only</FeedFooter>
   </section>;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clearCache, searchStories, type ItemResult } from '../api';
-import { ExternalLink, Failure, HideReadToggle, Icon, Skeleton } from './ui';
+import { ExternalLink, Failure, FeedFooter, HideReadToggle, Icon, Skeleton } from './ui';
 import { useViewSettings } from '../settings';
 import StoryList from './StoryList';
 
@@ -59,6 +59,6 @@ export default function SearchPanel({ query, active, selected, read, onRead, sav
       {loaded && page + 1 < pages && <div className="load-more-wrap"><button className="secondary-button" disabled={busy} onClick={() => void load(page + 1)}>{busy ? 'Searching…' : 'Load more results'} <span aria-hidden="true">↓</span></button><span className="load-caption">{items.length} of {total.toLocaleString('en')} results</span></div>}
       {loaded && items.length > 0 && page + 1 >= pages && <p className="end-note">That’s every match. A good time for a little break.</p>}
     </div>
-    <footer className="feed-footer"><span className="live-dot" />Search by the Hacker News Algolia API<ExternalLink href="https://hn.algolia.com">hn.algolia.com <Icon name="arrow" size={12} /></ExternalLink></footer>
+    <FeedFooter>Search by the Hacker News Algolia API<ExternalLink href="https://hn.algolia.com">hn.algolia.com <Icon name="arrow" size={12} /></ExternalLink></FeedFooter>
   </section>;
 }

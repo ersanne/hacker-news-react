@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clearCache, getFeed, getItems, type Feed, type ItemResult } from '../api';
-import { ExternalLink, Failure, HideReadToggle, Icon, Skeleton } from './ui';
+import { ExternalLink, Failure, FeedFooter, HideReadToggle, Icon, Skeleton } from './ui';
 import { useViewSettings } from '../settings';
 import StoryList from './StoryList';
 
@@ -96,6 +96,6 @@ export default function FeedPanel({ feed, active, enabled, selected, read, onRea
       {loaded && items.length < ids.length && <div className="load-more-wrap"><button className="secondary-button" disabled={busy} onClick={() => void load()}>{busy ? 'Loading stories…' : 'Load more stories'} <span aria-hidden="true">↓</span></button><span className="load-caption">{items.length} of {ids.length} stories</span></div>}
       {loaded && items.length > 0 && items.length >= ids.length && <p className="end-note">You’re all caught up. A good time for a little break.</p>}
     </div>
-    <footer className="feed-footer"><span className="live-dot" />Powered by the Hacker News community<ExternalLink href="https://news.ycombinator.com">news.ycombinator.com <Icon name="arrow" size={12} /></ExternalLink></footer>
+    <FeedFooter>Powered by the Hacker News community<ExternalLink href="https://news.ycombinator.com">news.ycombinator.com <Icon name="arrow" size={12} /></ExternalLink></FeedFooter>
   </section>;
 }

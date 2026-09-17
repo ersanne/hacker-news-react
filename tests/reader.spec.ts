@@ -188,3 +188,12 @@ test('keyboard navigation restores focus and read indicators persist', async ({ 
   await page.reload();
   await expect(page.locator('.story-row').first()).toHaveClass(/is-read/);
 });
+
+test('the footer byline links out with campaign tags', async ({ page }) => {
+  await mockAPI(page);
+  await page.goto('/');
+  const byline = page.locator('.feed-panel:not([hidden]) .byline');
+  await expect(byline).toBeVisible();
+  await expect(byline).toHaveAttribute('href', 'https://eriksanne.com/?utm_source=hn-reader&utm_medium=footer');
+  await expect(byline).toHaveAttribute('target', '_blank');
+});
