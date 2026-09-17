@@ -152,6 +152,7 @@ export default function App() {
     void navigate(value ? `/?q=${encodeURIComponent(value)}${suffix}` : `/?feed=${view}${suffix}`);
   }
 
+  const paneButtons = settings.order === 'article-first' ? ['article', 'comments'] : ['comments', 'article'];
   const listProps = { selected, read, onRead: markRead, saved, onToggleSaved: toggleSaved, hrefSuffix: suffix };
   const feedProps = { refreshAt, checkAt, onBusy: reportBusy };
   return <SettingsProvider value={settings}><div className="app-shell" data-width={settings.width} data-density={settings.density} data-order={settings.order}>
@@ -165,8 +166,11 @@ export default function App() {
             toolbar is left to actions on its content. */}
         {selected && <div className="mode-switch pane-switch" role="group" aria-label="Panes">
           <button type="button" data-pane="list" aria-pressed={!hideFeed} onClick={() => togglePane('nofeed')}>List</button>
-          <button type="button" data-pane="comments" aria-pressed={!hideComments} onClick={() => togglePane('nocomments')}>Comments</button>
-          <button type="button" data-pane="article" aria-pressed={showArticle} onClick={toggleArticle}>Article</button>
+          {/* The two reading panes follow the middle-column setting, so the
+              buttons read left to right in the order the panes appear. */}
+          {paneButtons.map(pane => pane === 'comments'
+            ? <button key={pane} type="button" data-pane="comments" aria-pressed={!hideComments} onClick={() => togglePane('nocomments')}>Comments</button>
+            : <button key={pane} type="button" data-pane="article" aria-pressed={showArticle} onClick={toggleArticle}>Article</button>)}
         </div>}
         {selected && <button type="button" className="icon-button pane-focus" aria-pressed={hideFeed && hideComments} aria-label={hideFeed && hideComments ? 'Leave focus mode' : 'Focus mode'} title={hideFeed && hideComments ? 'Leave focus mode' : 'Focus mode'} onClick={enterFocus}><Icon name="focus" size={14} /></button>}
         <div className="theme-control">
